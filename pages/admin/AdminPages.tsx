@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Button, Badge } from '../../components/UI';
-import { RECENT_APPOINTMENTS, TRANSACTIONS, MOCK_PATIENTS, INVENTORY, TREATMENT_CATALOG } from '../../constants';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { RECENT_APPOINTMENTS, TRANSACTIONS, MOCK_PATIENTS, INVENTORY, TREATMENT_CATALOG, EXPENSES, INSTALLMENTS, DOCTOR_PERFORMANCE } from '../../constants';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 // --- Dashboard ---
 export const Dashboard: React.FC = () => {
@@ -184,7 +184,7 @@ export const PatientsPage: React.FC = () => {
                                 <th className="px-6 py-4">Hasta</th>
                                 <th className="px-6 py-4">İletişim</th>
                                 <th className="px-6 py-4">Son Ziyaret</th>
-                                <th className="px-6 py-4">Gelecek Randevu</th>
+                                <th className="px-6 py-4">LTV (Değer)</th>
                                 <th className="px-6 py-4">Bakiye</th>
                                 <th className="px-6 py-4">Durum</th>
                                 <th className="px-6 py-4 text-right">İşlemler</th>
@@ -204,12 +204,8 @@ export const PatientsPage: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{patient.phone}</td>
                                     <td className="px-6 py-4 text-gray-600">{patient.lastVisit}</td>
-                                    <td className="px-6 py-4 text-gray-600">
-                                        {patient.nextVisit ? (
-                                            <span className="text-primary font-medium">{patient.nextVisit}</span>
-                                        ) : (
-                                            <span className="text-gray-400">-</span>
-                                        )}
+                                    <td className="px-6 py-4">
+                                        <span className="text-primary font-bold bg-primary/5 px-2 py-1 rounded">₺{patient.ltv.toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         {patient.balance > 0 ? (
@@ -373,6 +369,8 @@ export const TreatmentsAdminPage: React.FC = () => {
 
 // --- Finance Page ---
 export const FinancePage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'commission' | 'installments' | 'expenses' | 'invoices'>('overview');
+
   const chartData = [
     { name: 'Oca', income: 4000, expense: 2400 },
     { name: 'Şub', income: 3000, expense: 1398 },
@@ -383,91 +381,263 @@ export const FinancePage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ödeme ve Fatura Yönetimi</h1>
-          <p className="text-gray-500 text-sm">Finansal durum özeti ve işlem geçmişi</p>
+          <h1 className="text-2xl font-bold text-gray-900">Finans ve Muhasebe</h1>
+          <p className="text-gray-500 text-sm">Gelir, gider, hak ediş ve e-fatura yönetimi</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" icon="add">Ödeme Ekle</Button>
-          <Button icon="receipt_long">Fatura Oluştur</Button>
+            {activeTab === 'expenses' && <Button icon="add" variant="danger">Gider Ekle</Button>}
+            {activeTab === 'installments' && <Button icon="credit_card">Plan Oluştur</Button>}
+            {activeTab === 'invoices' && <Button icon="sync">GİB ile Eşle</Button>}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6 h-80">
-          <h3 className="font-bold text-gray-900 mb-4">Gelir vs Gider</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} />
-              <Tooltip />
-              <Bar dataKey="income" fill="#135bec" radius={[4, 4, 0, 0]} barSize={20} />
-              <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-        <Card className="p-6 flex flex-col justify-center items-center h-80">
-           <h3 className="font-bold text-gray-900 w-full mb-4">Ödeme Yöntemleri</h3>
-           <div className="relative w-40 h-40">
-             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-               <path className="text-gray-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-               <path className="text-primary" strokeDasharray="60, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-               <path className="text-blue-400" strokeDasharray="25, 100" strokeDashoffset="-60" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-             </svg>
-             <div className="absolute inset-0 flex flex-col items-center justify-center">
-               <span className="text-2xl font-bold">854</span>
-               <span className="text-xs text-gray-500">İşlem</span>
-             </div>
-           </div>
-           <div className="flex w-full justify-around mt-6 text-xs text-gray-500">
-             <div className="flex flex-col items-center">
-               <span>Kredi Kartı</span>
-               <span className="font-bold text-gray-900 text-sm">60%</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span>Nakit</span>
-               <span className="font-bold text-gray-900 text-sm">25%</span>
-             </div>
-             <div className="flex flex-col items-center">
-               <span>Sigorta</span>
-               <span className="font-bold text-gray-900 text-sm">15%</span>
-             </div>
-           </div>
-        </Card>
+      {/* Financial Tabs */}
+      <div className="flex border-b border-gray-200 gap-6 overflow-x-auto">
+        {[
+            { id: 'overview', label: 'Genel Bakış', icon: 'monitoring' },
+            { id: 'commission', label: 'Doktor Hak Ediş', icon: 'diversity_3' },
+            { id: 'installments', label: 'Taksit Takip', icon: 'credit_score' },
+            { id: 'expenses', label: 'Gider Yönetimi', icon: 'trending_down' },
+            { id: 'invoices', label: 'E-Fatura', icon: 'receipt_long' },
+        ].map(tab => (
+            <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+            >
+                <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+                {tab.label}
+            </button>
+        ))}
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4">İşlem ID</th>
-                <th className="px-6 py-4">Hasta Adı</th>
-                <th className="px-6 py-4">İşlem Tipi</th>
-                <th className="px-6 py-4">Tarih</th>
-                <th className="px-6 py-4 text-right">Tutar</th>
-                <th className="px-6 py-4">Durum</th>
-                <th className="px-6 py-4"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {TRANSACTIONS.map((trx) => (
-                <tr key={trx.id} className="hover:bg-gray-50/50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{trx.id}</td>
-                  <td className="px-6 py-4 text-gray-900">{trx.patient}</td>
-                  <td className="px-6 py-4 text-gray-500">{trx.type}</td>
-                  <td className="px-6 py-4 text-gray-500">{trx.date}</td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-900">₺{trx.amount.toLocaleString()}</td>
-                  <td className="px-6 py-4"><Badge status={trx.status} /></td>
-                  <td className="px-6 py-4 text-right"><button className="text-gray-400 hover:text-primary"><span className="material-symbols-outlined">more_vert</span></button></td>
-                </tr>
+      {activeTab === 'overview' && (
+          <div className="flex flex-col gap-6 animate-fade-in">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Card className="p-4 border-l-4 border-l-green-500">
+                        <p className="text-xs font-bold text-gray-500 uppercase">Toplam Ciro</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">₺245,000</p>
+                    </Card>
+                    <Card className="p-4 border-l-4 border-l-red-500">
+                        <p className="text-xs font-bold text-gray-500 uppercase">Toplam Gider</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">₺125,700</p>
+                    </Card>
+                    <Card className="p-4 border-l-4 border-l-blue-500 bg-blue-50">
+                        <p className="text-xs font-bold text-blue-600 uppercase">Net Kâr</p>
+                        <p className="text-2xl font-bold text-blue-800 mt-1">₺119,300</p>
+                    </Card>
+                    <Card className="p-4 border-l-4 border-l-purple-500">
+                        <p className="text-xs font-bold text-gray-500 uppercase">Ortalama LTV</p>
+                        <p className="text-2xl font-bold text-gray-900 mt-1">₺12,450</p>
+                        <p className="text-[10px] text-gray-400">Hasta Başına</p>
+                    </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2 p-6 h-80">
+                    <h3 className="font-bold text-gray-900 mb-4">Finansal Akış</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                        <Tooltip />
+                        <Bar dataKey="income" fill="#135bec" radius={[4, 4, 0, 0]} barSize={20} name="Gelir" />
+                        <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} name="Gider" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    </Card>
+                    <Card className="p-6">
+                         <h3 className="font-bold text-gray-900 mb-4">En Değerli Hastalar (LTV)</h3>
+                         <div className="space-y-4">
+                             {MOCK_PATIENTS.sort((a,b) => b.ltv - a.ltv).slice(0,4).map(p => (
+                                 <div key={p.id} className="flex items-center justify-between">
+                                     <div className="flex items-center gap-3">
+                                         <img src={p.image} className="w-10 h-10 rounded-full bg-gray-100 object-cover" alt={p.name} />
+                                         <div>
+                                             <p className="text-sm font-bold text-gray-900">{p.name}</p>
+                                             <p className="text-xs text-gray-500">Son: {p.lastVisit}</p>
+                                         </div>
+                                     </div>
+                                     <span className="text-sm font-bold text-primary bg-primary/5 px-2 py-1 rounded">₺{p.ltv.toLocaleString()}</span>
+                                 </div>
+                             ))}
+                         </div>
+                         <Button variant="ghost" className="w-full mt-4 text-xs">Tümünü Gör</Button>
+                    </Card>
+                </div>
+          </div>
+      )}
+
+      {activeTab === 'commission' && (
+          <div className="animate-fade-in">
+             <Card className="overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                        <tr>
+                            <th className="px-6 py-4">Doktor</th>
+                            <th className="px-6 py-4 text-right">Toplam Hasta</th>
+                            <th className="px-6 py-4 text-right">Toplam Ciro</th>
+                            <th className="px-6 py-4 text-right">Hak Ediş Oranı</th>
+                            <th className="px-6 py-4 text-right">Ödenecek Tutar</th>
+                            <th className="px-6 py-4 text-center">Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {DOCTOR_PERFORMANCE.map(doc => (
+                            <tr key={doc.doctorId} className="hover:bg-gray-50/50">
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                            {doc.name.charAt(4)}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-900">{doc.name}</p>
+                                            <p className="text-xs text-gray-500">ID: {doc.doctorId}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 text-right text-gray-600">{doc.patientCount}</td>
+                                <td className="px-6 py-4 text-right font-medium text-gray-900">₺{doc.totalTurnover.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">%{doc.commissionRate}</span>
+                                </td>
+                                <td className="px-6 py-4 text-right font-bold text-green-600">₺{doc.calculatedPayment.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-center">
+                                    <button className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">Ödeme Yap</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </Card>
+          </div>
+      )}
+
+      {activeTab === 'installments' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+              {INSTALLMENTS.map(plan => (
+                  <Card key={plan.id} className="p-6 border-l-4 border-l-purple-500">
+                      <div className="flex justify-between items-start mb-4">
+                          <div>
+                              <h3 className="font-bold text-gray-900">{plan.patientName}</h3>
+                              <p className="text-sm text-gray-500">{plan.treatment}</p>
+                          </div>
+                          <div className="text-right">
+                              <p className="text-xs text-gray-400 font-bold uppercase">Kalan Borç</p>
+                              <p className="text-xl font-bold text-red-600">₺{plan.remainingAmount.toLocaleString()}</p>
+                          </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                          {plan.installments.map((inst, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                  <div className="flex items-center gap-3">
+                                      <span className="text-xs font-bold text-gray-500 w-6">{idx+1}.</span>
+                                      <span className="text-sm font-medium">{inst.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                      <span className="font-bold text-gray-900">₺{inst.amount.toLocaleString()}</span>
+                                      {inst.status === 'paid' && <span className="material-symbols-outlined text-green-500 text-lg">check_circle</span>}
+                                      {inst.status === 'pending' && <span className="material-symbols-outlined text-gray-300 text-lg">radio_button_unchecked</span>}
+                                      {inst.status === 'overdue' && <span className="material-symbols-outlined text-red-500 text-lg">warning</span>}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </Card>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+          </div>
+      )}
+
+      {activeTab === 'expenses' && (
+           <div className="animate-fade-in">
+               <Card className="overflow-hidden">
+                   <table className="w-full text-left text-sm">
+                       <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                           <tr>
+                               <th className="px-6 py-4">Gider Kalemi</th>
+                               <th className="px-6 py-4">Kategori</th>
+                               <th className="px-6 py-4">Tarih</th>
+                               <th className="px-6 py-4 text-right">Tutar</th>
+                               <th className="px-6 py-4 text-center">Durum</th>
+                           </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-100">
+                           {EXPENSES.map(exp => (
+                               <tr key={exp.id} className="hover:bg-gray-50/50">
+                                   <td className="px-6 py-4 font-bold text-gray-900">{exp.title}</td>
+                                   <td className="px-6 py-4"><span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{exp.category}</span></td>
+                                   <td className="px-6 py-4 text-gray-500">{exp.date}</td>
+                                   <td className="px-6 py-4 text-right font-medium text-red-600">- ₺{exp.amount.toLocaleString()}</td>
+                                   <td className="px-6 py-4 text-center">
+                                       {exp.status === 'paid' ? (
+                                           <span className="text-green-600 flex items-center justify-center gap-1 font-bold text-xs"><span className="material-symbols-outlined text-sm">check</span> Ödendi</span>
+                                       ) : (
+                                           <span className="text-orange-500 flex items-center justify-center gap-1 font-bold text-xs"><span className="material-symbols-outlined text-sm">schedule</span> Bekliyor</span>
+                                       )}
+                                   </td>
+                               </tr>
+                           ))}
+                       </tbody>
+                   </table>
+               </Card>
+           </div>
+      )}
+
+      {activeTab === 'invoices' && (
+           <div className="animate-fade-in">
+               <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-center gap-3 mb-6">
+                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 shrink-0">
+                       <span className="material-symbols-outlined">dns</span>
+                   </div>
+                   <div>
+                       <h3 className="text-sm font-bold text-blue-900">GİB Entegrasyonu Aktif</h3>
+                       <p className="text-xs text-blue-700">Kesilen faturalar otomatik olarak Gelir İdaresi Başkanlığı sistemine iletilmektedir. Son senkronizasyon: 2 dk önce.</p>
+                   </div>
+               </div>
+
+               <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                    <tr>
+                        <th className="px-6 py-4">İşlem ID</th>
+                        <th className="px-6 py-4">Hasta Adı</th>
+                        <th className="px-6 py-4">İşlem Tipi</th>
+                        <th className="px-6 py-4">Tarih</th>
+                        <th className="px-6 py-4 text-right">Tutar</th>
+                        <th className="px-6 py-4 text-center">E-Fatura Durumu</th>
+                        <th className="px-6 py-4"></th>
+                    </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                    {TRANSACTIONS.map((trx) => (
+                        <tr key={trx.id} className="hover:bg-gray-50/50">
+                        <td className="px-6 py-4 font-medium text-gray-900">{trx.id}</td>
+                        <td className="px-6 py-4 text-gray-900">{trx.patient}</td>
+                        <td className="px-6 py-4 text-gray-500">{trx.type}</td>
+                        <td className="px-6 py-4 text-gray-500">{trx.date}</td>
+                        <td className="px-6 py-4 text-right font-medium text-gray-900">₺{trx.amount.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-center">
+                            {trx.invoiceStatus === 'sent' && <span className="inline-flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded text-xs font-bold border border-green-200">GİB'e İletildi</span>}
+                            {trx.invoiceStatus === 'pending' && <span className="inline-flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded text-xs font-bold border border-yellow-200">Sıradan Bekliyor</span>}
+                            {trx.invoiceStatus === 'error' && <span className="inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs font-bold border border-red-200">Hata Oluştu</span>}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                             <button className="text-primary hover:underline text-xs font-bold">PDF İndir</button>
+                        </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+                </div>
+            </Card>
+           </div>
+      )}
     </div>
   );
 };

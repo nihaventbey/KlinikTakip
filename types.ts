@@ -50,6 +50,7 @@ export interface Transaction {
   date: string;
   amount: number;
   status: 'paid' | 'pending' | 'late';
+  invoiceStatus?: 'sent' | 'pending' | 'error'; // E-Fatura durumu
 }
 
 export interface Patient {
@@ -62,6 +63,7 @@ export interface Patient {
   status: 'active' | 'archived' | 'new';
   balance: number;
   image: string;
+  ltv: number; // Lifetime Value
 }
 
 export interface InventoryItem {
@@ -103,4 +105,37 @@ export interface Task {
 export interface Shift {
   day: string;
   staff: { name: string; type: 'doctor' | 'assistant'; status: 'working' | 'off' | 'half' }[];
+}
+
+// --- New Financial Types ---
+
+export interface Expense {
+  id: string;
+  title: string;
+  category: 'Kira' | 'Maaş' | 'Malzeme' | 'Fatura' | 'Diğer';
+  amount: number;
+  date: string;
+  status: 'paid' | 'pending';
+}
+
+export interface InstallmentPlan {
+  id: string;
+  patientName: string;
+  treatment: string;
+  totalAmount: number;
+  remainingAmount: number;
+  installments: {
+    date: string;
+    amount: number;
+    status: 'paid' | 'pending' | 'overdue';
+  }[];
+}
+
+export interface DoctorPerformance {
+  doctorId: string;
+  name: string;
+  totalTurnover: number; // Toplam Ciro
+  commissionRate: number; // %
+  calculatedPayment: number; // Hak Ediş
+  patientCount: number;
 }

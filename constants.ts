@@ -1,4 +1,4 @@
-import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem, LabOrder, Task, Shift } from './types';
+import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem, LabOrder, Task, Shift, Expense, InstallmentPlan, DoctorPerformance } from './types';
 
 export const APP_NAME = "DentCare";
 
@@ -13,7 +13,7 @@ export const PUBLIC_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
   { label: 'Panel', path: '/admin/dashboard', icon: 'dashboard' },
-  { label: 'Klinik & Hasta', path: '/admin/clinical', icon: 'vital_signs' }, // New
+  { label: 'Klinik & Hasta', path: '/admin/clinical', icon: 'vital_signs' },
   { label: 'Randevular', path: '/admin/appointments', icon: 'calendar_month' },
   { label: 'Hastalar', path: '/admin/patients', icon: 'group' },
   { label: 'Tedaviler & Stok', path: '/admin/treatments', icon: 'dentistry' },
@@ -57,17 +57,17 @@ export const RECENT_APPOINTMENTS: Appointment[] = [
 ];
 
 export const TRANSACTIONS: Transaction[] = [
-  { id: 'TRX-8854', patient: 'Ayşe Kaya', type: 'İmplant Tedavisi (1/3)', date: '12 Mayıs 2024', amount: 8500, status: 'paid' },
-  { id: 'TRX-8853', patient: 'Mehmet Yılmaz', type: 'Kanal Tedavisi', date: '11 Mayıs 2024', amount: 2500, status: 'pending' },
-  { id: 'TRX-8852', patient: 'Zeynep Çelik', type: 'Diş Beyazlatma', date: '10 Mayıs 2024', amount: 4000, status: 'late' },
+  { id: 'TRX-8854', patient: 'Ayşe Kaya', type: 'İmplant Tedavisi (1/3)', date: '12 Mayıs 2024', amount: 8500, status: 'paid', invoiceStatus: 'sent' },
+  { id: 'TRX-8853', patient: 'Mehmet Yılmaz', type: 'Kanal Tedavisi', date: '11 Mayıs 2024', amount: 2500, status: 'pending', invoiceStatus: 'pending' },
+  { id: 'TRX-8852', patient: 'Zeynep Çelik', type: 'Diş Beyazlatma', date: '10 Mayıs 2024', amount: 4000, status: 'late', invoiceStatus: 'error' },
 ];
 
 export const MOCK_PATIENTS: Patient[] = [
-  { id: 'P-101', name: 'Zeynep Yılmaz', age: 28, phone: '0555 111 22 33', lastVisit: '10 Eki 2023', nextVisit: '15 Kas 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=5' },
-  { id: 'P-102', name: 'Ali Vural', age: 34, phone: '0532 222 33 44', lastVisit: '22 Eyl 2023', status: 'new', balance: 1500, image: 'https://i.pravatar.cc/150?img=11' },
-  { id: 'P-103', name: 'Ayşe Kaya', age: 45, phone: '0544 333 44 55', lastVisit: '05 Eki 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=9' },
-  { id: 'P-104', name: 'Mehmet Demir', age: 52, phone: '0505 444 55 66', lastVisit: '12 Ağu 2023', status: 'archived', balance: 0, image: 'https://i.pravatar.cc/150?img=13' },
-  { id: 'P-105', name: 'Selin Öz', age: 24, phone: '0530 555 66 77', lastVisit: 'Bugün', nextVisit: '24 Eki 2023', status: 'active', balance: 4500, image: 'https://i.pravatar.cc/150?img=1' },
+  { id: 'P-101', name: 'Zeynep Yılmaz', age: 28, phone: '0555 111 22 33', lastVisit: '10 Eki 2023', nextVisit: '15 Kas 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=5', ltv: 12500 },
+  { id: 'P-102', name: 'Ali Vural', age: 34, phone: '0532 222 33 44', lastVisit: '22 Eyl 2023', status: 'new', balance: 1500, image: 'https://i.pravatar.cc/150?img=11', ltv: 1500 },
+  { id: 'P-103', name: 'Ayşe Kaya', age: 45, phone: '0544 333 44 55', lastVisit: '05 Eki 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=9', ltv: 8400 },
+  { id: 'P-104', name: 'Mehmet Demir', age: 52, phone: '0505 444 55 66', lastVisit: '12 Ağu 2023', status: 'archived', balance: 0, image: 'https://i.pravatar.cc/150?img=13', ltv: 2200 },
+  { id: 'P-105', name: 'Selin Öz', age: 24, phone: '0530 555 66 77', lastVisit: 'Bugün', nextVisit: '24 Eki 2023', status: 'active', balance: 4500, image: 'https://i.pravatar.cc/150?img=1', ltv: 4500 },
 ];
 
 export const INVENTORY: InventoryItem[] = [
@@ -104,11 +104,44 @@ export const STAFF_SHIFTS: Shift[] = [
   { day: 'Çarşamba', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'working'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'off'}, {name: 'Elif', type: 'assistant', status: 'working'}] },
 ];
 
-// New Drug Data
 export const DRUGS_DB = [
     { name: 'Augmentin 1000mg', type: 'Antibiyotik', dose: '2x1' },
     { name: 'Apranax Fort 550mg', type: 'Ağrı Kesici', dose: '2x1 (Tok)' },
     { name: 'Majezik Gargara', type: 'Antiseptik', dose: '3x1' },
     { name: 'Arveles 25mg', type: 'Ağrı Kesici', dose: 'Gerektiğinde' },
     { name: 'Largopen 1g', type: 'Antibiyotik', dose: '2x1' },
+];
+
+// --- New Financial Mock Data ---
+
+export const EXPENSES: Expense[] = [
+  { id: 'EXP-001', title: 'Ekim Ayı Kira', category: 'Kira', amount: 25000, date: '01.10.2023', status: 'paid' },
+  { id: 'EXP-002', title: 'Personel Maaşları', category: 'Maaş', amount: 85000, date: '05.10.2023', status: 'paid' },
+  { id: 'EXP-003', title: 'Medikal Depo Faturası', category: 'Malzeme', amount: 12500, date: '12.10.2023', status: 'pending' },
+  { id: 'EXP-004', title: 'Elektrik Faturası', category: 'Fatura', amount: 3200, date: '15.10.2023', status: 'pending' },
+];
+
+export const INSTALLMENTS: InstallmentPlan[] = [
+  { 
+    id: 'INS-01', patientName: 'Zeynep Çelik', treatment: 'Şeffaf Plak Tedavisi', totalAmount: 35000, remainingAmount: 25000, 
+    installments: [
+      { date: '15.09.2023', amount: 10000, status: 'paid' },
+      { date: '15.10.2023', amount: 5000, status: 'overdue' },
+      { date: '15.11.2023', amount: 5000, status: 'pending' }
+    ]
+  },
+  { 
+    id: 'INS-02', patientName: 'Ali Vural', treatment: 'İmplant (3 Adet)', totalAmount: 45000, remainingAmount: 30000, 
+    installments: [
+      { date: '01.10.2023', amount: 15000, status: 'paid' },
+      { date: '01.11.2023', amount: 15000, status: 'pending' },
+      { date: '01.12.2023', amount: 15000, status: 'pending' }
+    ]
+  }
+];
+
+export const DOCTOR_PERFORMANCE: DoctorPerformance[] = [
+  { doctorId: '1', name: 'Dr. Ahmet Yılmaz', totalTurnover: 150000, commissionRate: 20, calculatedPayment: 30000, patientCount: 45 },
+  { doctorId: '2', name: 'Dr. Ayşe Demir', totalTurnover: 95000, commissionRate: 15, calculatedPayment: 14250, patientCount: 32 },
+  { doctorId: '3', name: 'Dr. Mehmet Öz', totalTurnover: 78000, commissionRate: 15, calculatedPayment: 11700, patientCount: 50 },
 ];
