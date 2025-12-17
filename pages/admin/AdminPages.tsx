@@ -3,9 +3,13 @@ import { Link } from 'react-router-dom';
 import { Card, Button, Badge } from '../../components/UI';
 import { RECENT_APPOINTMENTS, TRANSACTIONS, MOCK_PATIENTS, INVENTORY, TREATMENT_CATALOG, EXPENSES, INSTALLMENTS, DOCTOR_PERFORMANCE } from '../../constants';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { useAuth } from '../../contexts/AuthContext';
 
 // --- Dashboard ---
 export const Dashboard: React.FC = () => {
+  const { profile, user } = useAuth();
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Kullanıcı';
+
   const data = [
     { name: 'Pzt', value: 4000 },
     { name: 'Sal', value: 3000 },
@@ -20,7 +24,7 @@ export const Dashboard: React.FC = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hoş Geldiniz, Dr. Ahmet 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Hoş Geldiniz, {displayName} 👋</h1>
           <p className="text-gray-500 text-sm mt-1">Bugünün klinik özeti ve bekleyen görevleriniz.</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500 bg-white px-3 py-2 rounded-lg border border-gray-200">

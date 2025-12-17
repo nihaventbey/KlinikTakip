@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Environment variables should be in a .env file
-// REACT_APP_SUPABASE_URL=https://your-project.supabase.co
-// REACT_APP_SUPABASE_ANON_KEY=your-anon-key
+// --- AYARLAR ---
+// Kullanıcı tarafından sağlanan Supabase bilgileri
+const SUPABASE_URL = 'https://ptuxzazllyveqnydmybm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_ZzIHsTtNJGXG-SJAxSw19Q_Lo75Te3g';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('UYARI: Supabase bağlantı bilgileri eksik!');
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export type Profile = {
   id: string;
