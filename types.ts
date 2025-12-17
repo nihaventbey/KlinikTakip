@@ -53,17 +53,17 @@ export interface Transaction {
   invoiceStatus?: 'sent' | 'pending' | 'error'; // E-Fatura durumu
 }
 
+// Updated to match Supabase Schema (snake_case)
 export interface Patient {
   id: string;
-  name: string;
-  age: number;
+  full_name: string;
   phone: string;
-  lastVisit: string;
-  nextVisit?: string;
+  last_visit_date?: string;
+  avatar_url?: string;
   status: 'active' | 'archived' | 'new';
   balance: number;
-  image: string;
-  ltv: number; // Lifetime Value
+  ltv: number;
+  created_at?: string;
 }
 
 export interface InventoryItem {
