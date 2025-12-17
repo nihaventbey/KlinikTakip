@@ -36,9 +36,11 @@ export interface Appointment {
   doctorName: string;
   treatment: string;
   date: string;
-  time: string;
+  time: string; // HH:MM format
+  duration: number; // minutes
   status: 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'ongoing';
   type: 'visit' | 'operation' | 'control';
+  color?: string;
 }
 
 export interface Transaction {
@@ -78,4 +80,27 @@ export interface TreatmentItem {
   category: string;
   price: number;
   duration: string; // dk cinsinden
+}
+
+export interface LabOrder {
+  id: string;
+  patientName: string;
+  item: string;
+  labName: string;
+  status: 'ordered' | 'in-progress' | 'shipped' | 'arrived';
+  dueDate: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  assignee: string;
+  priority: 'high' | 'medium' | 'low';
+  completed: boolean;
+  dueDate: string;
+}
+
+export interface Shift {
+  day: string;
+  staff: { name: string; type: 'doctor' | 'assistant'; status: 'working' | 'off' | 'half' }[];
 }

@@ -1,4 +1,4 @@
-import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem } from './types';
+import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem, LabOrder, Task, Shift } from './types';
 
 export const APP_NAME = "DentCare";
 
@@ -16,6 +16,9 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Randevular', path: '/admin/appointments', icon: 'calendar_month' },
   { label: 'Hastalar', path: '/admin/patients', icon: 'group' },
   { label: 'Tedaviler & Stok', path: '/admin/treatments', icon: 'dentistry' },
+  { label: 'Lab & Protez', path: '/admin/lab', icon: 'biotech' }, // New
+  { label: 'Personel & Görev', path: '/admin/staff', icon: 'badge' }, // New
+  { label: 'Formlar', path: '/admin/forms', icon: 'description' }, // New
   { label: 'Finans', path: '/admin/finance', icon: 'payments' },
   { label: 'Ayarlar', path: '/admin/settings', icon: 'settings' },
 ];
@@ -46,10 +49,10 @@ export const DOCTORS: Doctor[] = [
 ];
 
 export const RECENT_APPOINTMENTS: Appointment[] = [
-  { id: '1', patientName: 'Ayşe Yılmaz', doctorName: 'Dr. Ahmet', treatment: 'Diş Temizliği', date: 'Bugün', time: '09:30', status: 'completed', type: 'visit' },
-  { id: '2', patientName: 'Mehmet Kaya', doctorName: 'Dr. Selin', treatment: 'Kanal Tedavisi', date: 'Bugün', time: '10:15', status: 'ongoing', type: 'operation' },
-  { id: '3', patientName: 'Can Demir', doctorName: 'Dr. Ahmet', treatment: 'İmplant Kontrol', date: 'Bugün', time: '11:00', status: 'pending', type: 'control' },
-  { id: '4', patientName: 'Zeynep Çelik', doctorName: 'Dr. Ayşe', treatment: 'Ortodonti', date: 'Bugün', time: '14:00', status: 'confirmed', type: 'visit' },
+  { id: '1', patientName: 'Ayşe Yılmaz', doctorName: 'Dr. Ahmet', treatment: 'Diş Temizliği', date: '2023-10-16', time: '09:00', duration: 60, status: 'completed', type: 'visit', color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: '2', patientName: 'Mehmet Kaya', doctorName: 'Dr. Selin', treatment: 'Kanal Tedavisi', date: '2023-10-16', time: '10:30', duration: 90, status: 'ongoing', type: 'operation', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { id: '3', patientName: 'Can Demir', doctorName: 'Dr. Ahmet', treatment: 'İmplant Kontrol', date: '2023-10-16', time: '13:00', duration: 30, status: 'pending', type: 'control', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  { id: '4', patientName: 'Zeynep Çelik', doctorName: 'Dr. Ayşe', treatment: 'Ortodonti', date: '2023-10-16', time: '14:00', duration: 45, status: 'confirmed', type: 'visit', color: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
 export const TRANSACTIONS: Transaction[] = [
@@ -80,4 +83,23 @@ export const TREATMENT_CATALOG: TreatmentItem[] = [
   { id: 'SRV-003', name: 'Kanal Tedavisi (Tek Kanal)', category: 'Endodonti', price: 2500, duration: '60 dk' },
   { id: 'SRV-004', name: 'İmplant (Yerli)', category: 'Cerrahi', price: 12000, duration: '90 dk' },
   { id: 'SRV-005', name: 'Diş Beyazlatma (Ofis Tipi)', category: 'Estetik', price: 4000, duration: '60 dk' },
+];
+
+// New Mock Data
+export const LAB_ORDERS: LabOrder[] = [
+  { id: 'LAB-01', patientName: 'Kemal Sunal', item: 'Zirkonyum Köprü', labName: 'Elit Dental Lab', status: 'shipped', dueDate: '2023-10-20' },
+  { id: 'LAB-02', patientName: 'Fatma Girik', item: 'Porselen Lamina', labName: 'Ataşehir Seramik', status: 'in-progress', dueDate: '2023-10-22' },
+  { id: 'LAB-03', patientName: 'Tarık Akan', item: 'Total Protez', labName: 'Elit Dental Lab', status: 'ordered', dueDate: '2023-10-25' },
+];
+
+export const TASKS: Task[] = [
+  { id: 'T-01', title: 'Mehmet Bey\'in röntgenlerini sisteme yükle', assignee: 'Asistan Elif', priority: 'high', completed: false, dueDate: 'Bugün' },
+  { id: 'T-02', title: 'Laboratuvar siparişlerini kontrol et', assignee: 'Dr. Ahmet', priority: 'medium', completed: false, dueDate: 'Yarın' },
+  { id: 'T-03', title: 'Bekleme salonu dergilerini yenile', assignee: 'Resepsiyon', priority: 'low', completed: true, dueDate: 'Dün' },
+];
+
+export const STAFF_SHIFTS: Shift[] = [
+  { day: 'Pazartesi', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'working'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'working'}, {name: 'Elif', type: 'assistant', status: 'working'}] },
+  { day: 'Salı', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'half'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'working'}, {name: 'Elif', type: 'assistant', status: 'off'}] },
+  { day: 'Çarşamba', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'working'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'off'}, {name: 'Elif', type: 'assistant', status: 'working'}] },
 ];

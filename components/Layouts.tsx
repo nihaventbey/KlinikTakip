@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PUBLIC_NAV, ADMIN_NAV, APP_NAME } from '../constants';
+import { GlobalSearch } from './GlobalSearch';
 
 // --- Shared Components ---
 
@@ -168,13 +169,28 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  // Keyboard Shortcut for Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="flex h-screen bg-surface-dim overflow-hidden">
+      {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
+      
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -210,6 +226,13 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
               <span className="text-sm font-semibold">{item.label}</span>
             </Link>
           ))}
+          
+          <div className="pt-4 mt-4 border-t border-gray-100">
+             <Link to="/kiosk/waiting-room" target="_blank" className="flex items-center gap-3 px-3 py-3 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900">
+                <span className="material-symbols-outlined">tv</span>
+                <span className="text-sm font-semibold">Kiosk Modu</span>
+             </Link>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-gray-100">
@@ -239,13 +262,15 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="hidden md:flex relative">
+            <div 
+                className="hidden md:flex relative cursor-pointer" 
+                onClick={() => setSearchOpen(true)}
+            >
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">search</span>
-              <input 
-                type="text" 
-                placeholder="Ara..." 
-                className="pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20 w-64 placeholder-gray-400"
-              />
+              <div className="pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm text-gray-500 w-64 flex justify-between items-center">
+                 <span>Ara...</span>
+                 <kbd className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-gray-200">⌘ K</kbd>
+              </div>
             </div>
             <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full">
               <span className="material-symbols-outlined">notifications</span>
