@@ -66,9 +66,9 @@ export const MOCK_PATIENTS: Patient[] = [
 ];
 
 export const TASKS: Task[] = [
-    { id: 't1', title: 'Stok sayımı yapılacak', priority: 'high', completed: false, assignee: 'Aslı', dueDate: '2023-10-25' },
-    { id: 't2', title: 'Dr. Ahmet hasta dosyaları düzenlenecek', priority: 'medium', completed: true, assignee: 'Burcu', dueDate: '2023-10-24' },
-    { id: 't3', title: 'Laboratuvar siparişleri kontrol et', priority: 'low', completed: false, assignee: 'Mehmet', dueDate: '2023-10-26' },
+    { id: 't1', title: 'Stok sayımı yapılacak', priority: 'high', status: 'pending', assignee: 'Aslı', due_date: '2023-10-25' },
+    { id: 't2', title: 'Dr. Ahmet hasta dosyaları düzenlenecek', priority: 'medium', status: 'completed', assignee: 'Burcu', due_date: '2023-10-24' },
+    { id: 't3', title: 'Laboratuvar siparişleri kontrol et', priority: 'low', status: 'pending', assignee: 'Mehmet', due_date: '2023-10-26' },
 ];
 
 export const STAFF_SHIFTS = [

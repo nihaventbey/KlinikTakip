@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 import { Card, Button, Badge } from '../../components/UI';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { supabase } from '../../lib/supabase';
+import { Patient } from '../../types';
 
 // --- Dashboard ---
 export const Dashboard: React.FC = () => {
   const { profile, user } = useAuth();
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Kullanıcı';
   
-  const [stats, setStats] = useState({ appointments: 0, patients: 0, income: 0, tasks: 5 });
+  const [stats, setStats] = useState({ appointments: 0, patients: 0, income: 0, tasks: 0 });
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export const Dashboard: React.FC = () => {
         .order('start_time', { ascending: false })
         .limit(5);
 
-      // 3. Fetch Total Patients Count (Waiting Room proxy)
+      // 3. Fetch Total Patients Count
       const { count: patientCount } = await supabase
         .from('patients')
         .select('*', { count: 'exact', head: true });
@@ -52,13 +54,19 @@ export const Dashboard: React.FC = () => {
         .eq('type', 'income')
         .eq('transaction_date', today);
 
+      // 5. Pending Tasks
+      const { count: taskCount } = await supabase
+         .from('tasks')
+         .select('*', { count: 'exact', head: true })
+         .eq('status', 'pending');
+
       const totalIncome = incomeData?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
 
       setStats({
         appointments: aptCount || 0,
-        patients: patientCount || 0, // Using total patient count as proxy for now
+        patients: patientCount || 0,
         income: totalIncome,
-        tasks: 8 
+        tasks: taskCount || 0 
       });
 
       setAppointments(apts || []);
@@ -100,7 +108,7 @@ export const Dashboard: React.FC = () => {
           { title: 'Bugünkü Randevular', value: stats.appointments, trend: 'Aktif', color: 'text-primary', icon: 'calendar_month' },
           { title: 'Kayıtlı Hasta', value: stats.patients, trend: 'Toplam', color: 'text-purple-600', icon: 'group' },
           { title: 'Günlük Tahsilat', value: `₺${stats.income.toLocaleString()}`, trend: 'Bugün', color: 'text-green-600', icon: 'payments' },
-          { title: 'Bekleyen Görevler', value: stats.tasks, trend: '2 Acil', color: 'text-orange-500', icon: 'task_alt' }
+          { title: 'Bekleyen Görevler', value: stats.tasks, trend: 'Yapılacak', color: 'text-orange-500', icon: 'task_alt' }
         ].map((stat, i) => (
           <Card key={i} className="p-5 flex flex-col justify-between h-32 relative overflow-hidden group">
             <div className="relative z-10">
@@ -205,12 +213,21 @@ export const Dashboard: React.FC = () => {
 // --- Patients Page ---
 export const PatientsPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [patients, setPatients] = useState<any[]>([]);
+    const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
         const fetchPatients = async () => {
-            const { data } = await supabase.from('patients').select('*').order('created_at', {ascending: false});
-            if(data) setPatients(data);
+            setLoading(true);
+            try {
+                const { data, error } = await supabase.from('patients').select('*').order('created_at', {ascending: false});
+                if(error) throw error;
+                if(data) setPatients(data);
+            } catch (error) {
+                console.error("Error fetching patients:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchPatients();
     }, []);
@@ -245,52 +262,61 @@ export const PatientsPage: React.FC = () => {
             </div>
 
             <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4">Hasta</th>
-                                <th className="px-6 py-4">İletişim</th>
-                                <th className="px-6 py-4">LTV (Değer)</th>
-                                <th className="px-6 py-4">Bakiye</th>
-                                <th className="px-6 py-4">Durum</th>
-                                <th className="px-6 py-4 text-right">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {filteredPatients.map(patient => (
-                                <tr key={patient.id} className="hover:bg-gray-50/50 group">
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <img src={patient.avatar_url || 'https://i.pravatar.cc/150'} className="w-10 h-10 rounded-full bg-gray-200 object-cover" alt={patient.full_name} />
-                                            <div>
-                                                <p className="font-bold text-gray-900">{patient.full_name}</p>
-                                                <p className="text-xs text-gray-500">Kayıt: {new Date(patient.created_at).toLocaleDateString('tr-TR')}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{patient.phone}</td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-primary font-bold bg-primary/5 px-2 py-1 rounded">₺{patient.ltv?.toLocaleString()}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {patient.balance > 0 ? (
-                                            <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded">₺{patient.balance?.toLocaleString()}</span>
-                                        ) : (
-                                            <span className="text-green-600 font-bold">Ödendi</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <Badge status={patient.status || 'active'} />
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button className="text-primary hover:underline">Detay</button>
-                                    </td>
+                {loading ? (
+                    <div className="p-8 text-center text-gray-500">Yükleniyor...</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4">Hasta</th>
+                                    <th className="px-6 py-4">İletişim</th>
+                                    <th className="px-6 py-4">LTV (Değer)</th>
+                                    <th className="px-6 py-4">Bakiye</th>
+                                    <th className="px-6 py-4">Durum</th>
+                                    <th className="px-6 py-4 text-right">İşlemler</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredPatients.map(patient => (
+                                    <tr key={patient.id} className="hover:bg-gray-50/50 group">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <img src={patient.avatar_url || 'https://i.pravatar.cc/150'} className="w-10 h-10 rounded-full bg-gray-200 object-cover" alt={patient.full_name} />
+                                                <div>
+                                                    <p className="font-bold text-gray-900">{patient.full_name}</p>
+                                                    <p className="text-xs text-gray-500">Kayıt: {patient.created_at ? new Date(patient.created_at).toLocaleDateString('tr-TR') : '-'}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600">{patient.phone}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-primary font-bold bg-primary/5 px-2 py-1 rounded">₺{patient.ltv?.toLocaleString()}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {patient.balance > 0 ? (
+                                                <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded">₺{patient.balance?.toLocaleString()}</span>
+                                            ) : (
+                                                <span className="text-green-600 font-bold">Ödendi</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <Badge status={patient.status || 'active'} />
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="text-primary hover:underline">Detay</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredPatients.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </Card>
         </div>
     );
@@ -468,11 +494,71 @@ export const FinancePage: React.FC = () => {
 
 // --- Settings Page ---
 export const SettingsPage: React.FC = () => {
+  const { settings, updateSettings, loading } = useSettings();
+  const [formData, setFormData] = useState(settings || {});
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    if(settings) setFormData(settings);
+  }, [settings]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateSettings(formData);
+      setMsg('Ayarlar başarıyla güncellendi.');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (error) {
+      setMsg('Hata oluştu.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if(loading) return <div>Yükleniyor...</div>;
+
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Ayarlar</h1>
-      <Card className="p-6">
-        <p className="text-gray-500">Bu alan henüz yapım aşamasındadır.</p>
+    <div className="max-w-4xl mx-auto flex flex-col gap-6 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Klinik Ayarları</h1>
+        {msg && <span className="text-green-600 font-bold bg-green-50 px-3 py-1 rounded">{msg}</span>}
+      </div>
+
+      <Card className="p-8">
+        <h3 className="text-lg font-bold mb-6 border-b border-gray-100 pb-2">Genel Bilgiler</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+             <div className="flex flex-col gap-2">
+                 <label className="text-sm font-bold text-gray-700">Klinik Adı</label>
+                 <input name="clinic_name" value={formData.clinic_name || ''} onChange={handleChange} className="p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors" />
+             </div>
+             <div className="flex flex-col gap-2">
+                 <label className="text-sm font-bold text-gray-700">Telefon</label>
+                 <input name="phone" value={formData.phone || ''} onChange={handleChange} className="p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors" />
+             </div>
+             <div className="flex flex-col gap-2">
+                 <label className="text-sm font-bold text-gray-700">E-Posta</label>
+                 <input name="email" value={formData.email || ''} onChange={handleChange} className="p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors" />
+             </div>
+             <div className="flex flex-col gap-2">
+                 <label className="text-sm font-bold text-gray-700">Logo URL</label>
+                 <input name="logo_url" value={formData.logo_url || ''} onChange={handleChange} placeholder="https://..." className="p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors" />
+             </div>
+        </div>
+        <div className="flex flex-col gap-2 mb-8">
+             <label className="text-sm font-bold text-gray-700">Adres</label>
+             <input name="address" value={formData.address || ''} onChange={handleChange} className="p-3 border border-gray-200 rounded-lg bg-gray-50 focus:bg-white transition-colors" />
+        </div>
+        
+        <div className="flex justify-end">
+             <Button onClick={handleSave} disabled={saving} icon="save">
+               {saving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+             </Button>
+        </div>
       </Card>
     </div>
   );

@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { PUBLIC_NAV, ADMIN_NAV, APP_NAME } from '../constants';
+import { PUBLIC_NAV, ADMIN_NAV } from '../constants';
 import { GlobalSearch } from './GlobalSearch';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 // --- Shared Components ---
 
-export const Logo: React.FC<{ light?: boolean }> = ({ light }) => (
-  <div className="flex items-center gap-3 select-none">
-    <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${light ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary'}`}>
-      <span className="material-symbols-outlined text-3xl">dentistry</span>
+export const Logo: React.FC<{ light?: boolean }> = ({ light }) => {
+  const { settings } = useSettings();
+  
+  return (
+    <div className="flex items-center gap-3 select-none">
+      {settings?.logo_url ? (
+          <img src={settings.logo_url} alt="Logo" className="w-10 h-10 rounded-xl object-contain bg-white" />
+      ) : (
+          <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${light ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary'}`}>
+            <span className="material-symbols-outlined text-3xl">dentistry</span>
+          </div>
+      )}
+      <span className={`text-xl font-bold tracking-tight ${light ? 'text-white' : 'text-gray-900'}`}>
+        {settings?.clinic_name || 'DentCare'}
+      </span>
     </div>
-    <span className={`text-xl font-bold tracking-tight ${light ? 'text-white' : 'text-gray-900'}`}>
-      {APP_NAME}
-    </span>
-  </div>
-);
+  );
+};
 
 // --- WhatsApp Widget ---
-const WhatsAppWidget: React.FC = () => (
-  <a 
-    href="https://wa.me/" 
-    target="_blank" 
-    rel="noreferrer"
-    className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform group"
-  >
-    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-8 h-8" />
-    <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 font-bold whitespace-nowrap px-0 group-hover:px-2">Canlı Destek</span>
-  </a>
-);
+const WhatsAppWidget: React.FC = () => {
+    const { settings } = useSettings();
+    // Clean phone number for link
+    const cleanPhone = settings?.phone?.replace(/[^0-9]/g, '') || '902125550000';
+    
+    return (
+      <a 
+        href={`https://wa.me/${cleanPhone}`}
+        target="_blank" 
+        rel="noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] text-white p-3 rounded-full shadow-lg hover:scale-110 transition-transform group"
+      >
+        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" className="w-8 h-8" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 font-bold whitespace-nowrap px-0 group-hover:px-2">Canlı Destek</span>
+      </a>
+    );
+};
 
 // --- Public Layout ---
 
@@ -36,6 +51,7 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { settings } = useSettings();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -136,15 +152,15 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
               <ul className="flex flex-col gap-3 text-sm text-gray-400">
                 <li className="flex items-start gap-2">
                   <span className="material-symbols-outlined text-primary text-lg">location_on</span>
-                  <span>Bağdat Caddesi No: 123, Kadıköy, İstanbul</span>
+                  <span>{settings?.address}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-lg">call</span>
-                  <span>+90 (212) 555 00 00</span>
+                  <span>{settings?.phone}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-lg">mail</span>
-                  <span>info@dentcare.com</span>
+                  <span>{settings?.email}</span>
                 </li>
               </ul>
             </div>
@@ -158,7 +174,7 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-gray-500 text-sm">
-            © {new Date().getFullYear()} {APP_NAME}. Tüm hakları saklıdır.
+            © {new Date().getFullYear()} {settings?.clinic_name}. Tüm hakları saklıdır.
           </div>
         </div>
       </footer>
@@ -174,6 +190,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const location = useLocation();
   const navigate = useNavigate();
   const { session, profile, loading, signOut } = useAuth();
+  const { settings } = useSettings();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -203,8 +220,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
            <div className="bg-primary/10 p-2 rounded-xl text-primary">
              <span className="material-symbols-outlined text-2xl">dentistry</span>
            </div>
-           <div>
-             <h1 className="font-bold text-lg text-gray-900">{APP_NAME}</h1>
+           <div className="overflow-hidden">
+             <h1 className="font-bold text-lg text-gray-900 truncate">{settings?.clinic_name || 'DentCare'}</h1>
              <p className="text-xs text-secondary font-medium">Yönetim Paneli</p>
            </div>
         </div>

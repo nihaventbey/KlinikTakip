@@ -98,8 +98,19 @@ export interface Task {
   title: string;
   assignee: string;
   priority: 'high' | 'medium' | 'low';
-  completed: boolean;
-  dueDate: string;
+  status: 'pending' | 'completed'; // Changed from boolean completed to status string
+  due_date: string; // Changed from camelCase to snake_case
+  created_at?: string;
+}
+
+export interface ClinicSettings {
+  id: string;
+  clinic_name: string;
+  phone: string;
+  address: string;
+  email: string;
+  logo_url: string;
+  currency: string;
 }
 
 export interface Shift {

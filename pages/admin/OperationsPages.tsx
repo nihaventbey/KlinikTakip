@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../../components/UI';
-import { TASKS, STAFF_SHIFTS } from '../../constants';
 import { supabase } from '../../lib/supabase';
+import { Task } from '../../types';
 
 // --- Lab Tracking (Kanban) ---
 export const LabTrackingPage: React.FC = () => {
@@ -68,32 +68,84 @@ export const LabTrackingPage: React.FC = () => {
     );
 };
 
-// --- Staff & Task Manager (Keeping Mock for UI Demo as SQL is simpler for now) ---
+// --- Staff & Task Manager ---
 export const StaffManagerPage: React.FC = () => {
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchTasks = async () => {
+        setLoading(true);
+        const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        if(data) setTasks(data);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchTasks();
+    }, []);
+
+    const toggleTask = async (task: Task) => {
+        const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+        
+        // Optimistic update
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+
+        await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
+    };
+
+    const addTask = async () => {
+        const title = prompt("Görev başlığı:");
+        if (!title) return;
+        
+        const { data, error } = await supabase.from('tasks').insert({
+            title,
+            priority: 'medium',
+            status: 'pending',
+            assignee: 'Personel',
+            due_date: new Date().toISOString()
+        }).select().single();
+
+        if (data) setTasks(prev => [data, ...prev]);
+    };
+
     return (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 animate-fade-in">
             {/* Tasks */}
             <section>
                  <div className="flex justify-between items-center mb-4">
-                     <h2 className="text-xl font-bold">Görev Yöneticisi</h2>
-                     <Button icon="add_task" variant="secondary">Yeni Görev</Button>
+                     <div>
+                        <h2 className="text-xl font-bold text-gray-900">Görev Yöneticisi</h2>
+                        <p className="text-gray-500 text-sm">Personel görev takibi</p>
+                     </div>
+                     <Button icon="add_task" variant="secondary" onClick={addTask}>Yeni Görev</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {TASKS.map(task => (
-                        <div key={task.id} className={`p-4 rounded-xl border ${task.completed ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-white border-gray-200 shadow-sm'}`}>
-                             <div className="flex justify-between items-start mb-2">
-                                 <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
-                                     task.priority === 'high' ? 'bg-red-100 text-red-700' : 
-                                     task.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
-                                 }`}>
-                                     {task.priority === 'high' ? 'Yüksek' : task.priority === 'medium' ? 'Orta' : 'Düşük'} Öncelik
-                                 </span>
-                                 <input type="checkbox" defaultChecked={task.completed} className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary" />
-                             </div>
-                             <p className={`font-bold mb-1 ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>{task.title}</p>
-                        </div>
-                    ))}
-                </div>
+                {loading ? <p>Yükleniyor...</p> : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {tasks.map(task => (
+                            <div key={task.id} className={`p-4 rounded-xl border transition-all ${task.status === 'completed' ? 'bg-gray-50 border-gray-200 opacity-70' : 'bg-white border-gray-200 shadow-sm hover:shadow-md'}`}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                                        task.priority === 'high' ? 'bg-red-100 text-red-700' : 
+                                        task.priority === 'medium' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                                    }`}>
+                                        {task.priority === 'high' ? 'Yüksek' : task.priority === 'medium' ? 'Orta' : 'Düşük'} Öncelik
+                                    </span>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={task.status === 'completed'} 
+                                        onChange={() => toggleTask(task)}
+                                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer" 
+                                    />
+                                </div>
+                                <p className={`font-bold mb-1 ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-900'}`}>{task.title}</p>
+                                <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
+                                    <span>{task.assignee || 'Atanmamış'}</span>
+                                    <span>{task.due_date ? new Date(task.due_date).toLocaleDateString('tr-TR') : '-'}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </section>
         </div>
     );
