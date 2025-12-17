@@ -1,3 +1,4 @@
+
 export interface NavItem {
   label: string;
   path: string;
@@ -47,4 +48,34 @@ export interface Transaction {
   date: string;
   amount: number;
   status: 'paid' | 'pending' | 'late';
+}
+
+export interface Patient {
+  id: string;
+  name: string;
+  age: number;
+  phone: string;
+  lastVisit: string;
+  nextVisit?: string;
+  status: 'active' | 'archived' | 'new';
+  balance: number;
+  image: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  stock: number;
+  unit: string;
+  minLevel: number;
+  status: 'ok' | 'low' | 'critical';
+}
+
+export interface TreatmentItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  duration: string; // dk cinsinden
 }

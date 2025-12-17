@@ -1,4 +1,4 @@
-import { NavItem, Doctor, Appointment, Transaction } from './types';
+import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem } from './types';
 
 export const APP_NAME = "DentCare";
 
@@ -15,7 +15,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Panel', path: '/admin/dashboard', icon: 'dashboard' },
   { label: 'Randevular', path: '/admin/appointments', icon: 'calendar_month' },
   { label: 'Hastalar', path: '/admin/patients', icon: 'group' },
-  { label: 'Tedaviler', path: '/admin/treatments', icon: 'dentistry' },
+  { label: 'Tedaviler & Stok', path: '/admin/treatments', icon: 'dentistry' },
   { label: 'Finans', path: '/admin/finance', icon: 'payments' },
   { label: 'Ayarlar', path: '/admin/settings', icon: 'settings' },
 ];
@@ -56,4 +56,28 @@ export const TRANSACTIONS: Transaction[] = [
   { id: 'TRX-8854', patient: 'Ayşe Kaya', type: 'İmplant Tedavisi (1/3)', date: '12 Mayıs 2024', amount: 8500, status: 'paid' },
   { id: 'TRX-8853', patient: 'Mehmet Yılmaz', type: 'Kanal Tedavisi', date: '11 Mayıs 2024', amount: 2500, status: 'pending' },
   { id: 'TRX-8852', patient: 'Zeynep Çelik', type: 'Diş Beyazlatma', date: '10 Mayıs 2024', amount: 4000, status: 'late' },
+];
+
+export const MOCK_PATIENTS: Patient[] = [
+  { id: 'P-101', name: 'Zeynep Yılmaz', age: 28, phone: '0555 111 22 33', lastVisit: '10 Eki 2023', nextVisit: '15 Kas 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=5' },
+  { id: 'P-102', name: 'Ali Vural', age: 34, phone: '0532 222 33 44', lastVisit: '22 Eyl 2023', status: 'new', balance: 1500, image: 'https://i.pravatar.cc/150?img=11' },
+  { id: 'P-103', name: 'Ayşe Kaya', age: 45, phone: '0544 333 44 55', lastVisit: '05 Eki 2023', status: 'active', balance: 0, image: 'https://i.pravatar.cc/150?img=9' },
+  { id: 'P-104', name: 'Mehmet Demir', age: 52, phone: '0505 444 55 66', lastVisit: '12 Ağu 2023', status: 'archived', balance: 0, image: 'https://i.pravatar.cc/150?img=13' },
+  { id: 'P-105', name: 'Selin Öz', age: 24, phone: '0530 555 66 77', lastVisit: 'Bugün', nextVisit: '24 Eki 2023', status: 'active', balance: 4500, image: 'https://i.pravatar.cc/150?img=1' },
+];
+
+export const INVENTORY: InventoryItem[] = [
+  { id: 'INV-001', name: 'Cerrahi Eldiven (M)', category: 'Sarf Malzeme', stock: 12, unit: 'Kutu', minLevel: 10, status: 'low' },
+  { id: 'INV-002', name: 'Lokal Anestezi (2ml)', category: 'İlaç', stock: 45, unit: 'Ampul', minLevel: 20, status: 'ok' },
+  { id: 'INV-003', name: 'Kompozit Dolgu Seti', category: 'Tedavi', stock: 3, unit: 'Set', minLevel: 5, status: 'critical' },
+  { id: 'INV-004', name: 'İmplant Vidası (Titanyum)', category: 'İmplant', stock: 8, unit: 'Adet', minLevel: 5, status: 'ok' },
+  { id: 'INV-005', name: 'Diş Hekimi Önlüğü', category: 'Tekstil', stock: 15, unit: 'Adet', minLevel: 5, status: 'ok' },
+];
+
+export const TREATMENT_CATALOG: TreatmentItem[] = [
+  { id: 'SRV-001', name: 'Diş Taşı Temizliği', category: 'Genel', price: 1200, duration: '30 dk' },
+  { id: 'SRV-002', name: 'Kompozit Dolgu', category: 'Dolgu', price: 1500, duration: '45 dk' },
+  { id: 'SRV-003', name: 'Kanal Tedavisi (Tek Kanal)', category: 'Endodonti', price: 2500, duration: '60 dk' },
+  { id: 'SRV-004', name: 'İmplant (Yerli)', category: 'Cerrahi', price: 12000, duration: '90 dk' },
+  { id: 'SRV-005', name: 'Diş Beyazlatma (Ofis Tipi)', category: 'Estetik', price: 4000, duration: '60 dk' },
 ];

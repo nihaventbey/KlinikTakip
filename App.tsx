@@ -2,13 +2,9 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { PublicLayout, AdminLayout } from './components/Layouts';
 import { HomePage, ServicesPage, TeamPage, AppointmentPage, ContactPage } from './pages/public/PublicPages';
-import { Dashboard, FinancePage, SettingsPage } from './pages/admin/AdminPages';
+import { Dashboard, FinancePage, SettingsPage, PatientsPage, TreatmentsAdminPage } from './pages/admin/AdminPages';
 import { AppointmentCalendar } from './pages/admin/AppointmentCalendar';
 import { LoginPage } from './pages/admin/Login';
-
-// Placeholder components for routes not fully implemented in demo
-const PatientsPage = () => <div className="p-8 text-center text-gray-500">Hasta Yönetimi Modülü</div>;
-const TreatmentsAdminPage = () => <div className="p-8 text-center text-gray-500">Tedavi Yönetimi Modülü</div>;
 
 const App: React.FC = () => {
   return (
