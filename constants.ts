@@ -13,12 +13,13 @@ export const PUBLIC_NAV: NavItem[] = [
 
 export const ADMIN_NAV: NavItem[] = [
   { label: 'Panel', path: '/admin/dashboard', icon: 'dashboard' },
+  { label: 'Klinik & Hasta', path: '/admin/clinical', icon: 'vital_signs' }, // New
   { label: 'Randevular', path: '/admin/appointments', icon: 'calendar_month' },
   { label: 'Hastalar', path: '/admin/patients', icon: 'group' },
   { label: 'Tedaviler & Stok', path: '/admin/treatments', icon: 'dentistry' },
-  { label: 'Lab & Protez', path: '/admin/lab', icon: 'biotech' }, // New
-  { label: 'Personel & Görev', path: '/admin/staff', icon: 'badge' }, // New
-  { label: 'Formlar', path: '/admin/forms', icon: 'description' }, // New
+  { label: 'Lab & Protez', path: '/admin/lab', icon: 'biotech' },
+  { label: 'Personel & Görev', path: '/admin/staff', icon: 'badge' },
+  { label: 'Formlar', path: '/admin/forms', icon: 'description' },
   { label: 'Finans', path: '/admin/finance', icon: 'payments' },
   { label: 'Ayarlar', path: '/admin/settings', icon: 'settings' },
 ];
@@ -85,7 +86,6 @@ export const TREATMENT_CATALOG: TreatmentItem[] = [
   { id: 'SRV-005', name: 'Diş Beyazlatma (Ofis Tipi)', category: 'Estetik', price: 4000, duration: '60 dk' },
 ];
 
-// New Mock Data
 export const LAB_ORDERS: LabOrder[] = [
   { id: 'LAB-01', patientName: 'Kemal Sunal', item: 'Zirkonyum Köprü', labName: 'Elit Dental Lab', status: 'shipped', dueDate: '2023-10-20' },
   { id: 'LAB-02', patientName: 'Fatma Girik', item: 'Porselen Lamina', labName: 'Ataşehir Seramik', status: 'in-progress', dueDate: '2023-10-22' },
@@ -102,4 +102,13 @@ export const STAFF_SHIFTS: Shift[] = [
   { day: 'Pazartesi', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'working'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'working'}, {name: 'Elif', type: 'assistant', status: 'working'}] },
   { day: 'Salı', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'half'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'working'}, {name: 'Elif', type: 'assistant', status: 'off'}] },
   { day: 'Çarşamba', staff: [{name: 'Dr. Ahmet', type: 'doctor', status: 'working'}, {name: 'Dr. Ayşe', type: 'doctor', status: 'off'}, {name: 'Elif', type: 'assistant', status: 'working'}] },
+];
+
+// New Drug Data
+export const DRUGS_DB = [
+    { name: 'Augmentin 1000mg', type: 'Antibiyotik', dose: '2x1' },
+    { name: 'Apranax Fort 550mg', type: 'Ağrı Kesici', dose: '2x1 (Tok)' },
+    { name: 'Majezik Gargara', type: 'Antiseptik', dose: '3x1' },
+    { name: 'Arveles 25mg', type: 'Ağrı Kesici', dose: 'Gerektiğinde' },
+    { name: 'Largopen 1g', type: 'Antibiyotik', dose: '2x1' },
 ];
