@@ -1,4 +1,4 @@
-import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem, LabOrder, Task, Shift, Expense, InstallmentPlan, DoctorPerformance } from './types';
+import { NavItem, Doctor, Appointment, Transaction, Patient, InventoryItem, TreatmentItem, LabOrder, Task, Shift, Expense, InstallmentPlan, DoctorPerformance, Lead, Campaign, SocialPost } from './types';
 
 export const APP_NAME = "DentCare";
 
@@ -16,6 +16,7 @@ export const ADMIN_NAV: NavItem[] = [
   { label: 'Klinik & Hasta', path: '/admin/clinical', icon: 'vital_signs' },
   { label: 'Randevular', path: '/admin/appointments', icon: 'calendar_month' },
   { label: 'Hastalar', path: '/admin/patients', icon: 'group' },
+  { label: 'Pazarlama', path: '/admin/marketing', icon: 'campaign' }, // New
   { label: 'Tedaviler & Stok', path: '/admin/treatments', icon: 'dentistry' },
   { label: 'Lab & Protez', path: '/admin/lab', icon: 'biotech' },
   { label: 'Personel & Görev', path: '/admin/staff', icon: 'badge' },
@@ -112,8 +113,7 @@ export const DRUGS_DB = [
     { name: 'Largopen 1g', type: 'Antibiyotik', dose: '2x1' },
 ];
 
-// --- New Financial Mock Data ---
-
+// Financial Mock Data
 export const EXPENSES: Expense[] = [
   { id: 'EXP-001', title: 'Ekim Ayı Kira', category: 'Kira', amount: 25000, date: '01.10.2023', status: 'paid' },
   { id: 'EXP-002', title: 'Personel Maaşları', category: 'Maaş', amount: 85000, date: '05.10.2023', status: 'paid' },
@@ -144,4 +144,24 @@ export const DOCTOR_PERFORMANCE: DoctorPerformance[] = [
   { doctorId: '1', name: 'Dr. Ahmet Yılmaz', totalTurnover: 150000, commissionRate: 20, calculatedPayment: 30000, patientCount: 45 },
   { doctorId: '2', name: 'Dr. Ayşe Demir', totalTurnover: 95000, commissionRate: 15, calculatedPayment: 14250, patientCount: 32 },
   { doctorId: '3', name: 'Dr. Mehmet Öz', totalTurnover: 78000, commissionRate: 15, calculatedPayment: 11700, patientCount: 50 },
+];
+
+// --- Marketing Mock Data ---
+
+export const LEADS: Lead[] = [
+  { id: 'L-01', name: 'Burak Yılmaz', source: 'Instagram', status: 'new', date: '10 dk önce', phone: '0532 111 22 33', interest: 'İmplant' },
+  { id: 'L-02', name: 'Selin Gür', source: 'Website', status: 'contacted', date: '2 saat önce', phone: '0555 444 55 66', interest: 'Beyazlatma' },
+  { id: 'L-03', name: 'Mert Demir', source: 'Referans', status: 'appointed', date: 'Dün', phone: '0542 333 99 88', interest: 'Ortodonti' },
+  { id: 'L-04', name: 'Ayşe Can', source: 'Google', status: 'converted', date: '2 gün önce', phone: '0535 777 66 55', interest: 'Genel' },
+];
+
+export const CAMPAIGNS: Campaign[] = [
+  { id: 'C-01', title: 'İmplant Sonbahar İndirimi', type: 'sms', status: 'active', sentCount: 1500, conversionRate: 4.2, date: '15.10.2023' },
+  { id: 'C-02', title: 'Arkadaşını Getir %15 Kazan', type: 'email', status: 'active', sentCount: 3200, conversionRate: 2.1, date: '01.10.2023' },
+  { id: 'C-03', title: 'Beyazlatma Fırsatı', type: 'social', status: 'ended', sentCount: 5000, conversionRate: 1.5, date: 'Eylül 2023' },
+];
+
+export const SOCIAL_POSTS: SocialPost[] = [
+  { id: 'S-01', image: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?q=80&w=600', caption: 'Gülüş tasarımında yeni bir dönem! ✨ Hastamızın 1 haftalık değişimi. Randevu için DM. #dishekimi #gülüştasarımı', platform: 'instagram', status: 'draft', date: 'Taslak' },
+  { id: 'S-02', image: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=600', caption: 'Kliniğimizde en son teknoloji cihazlarla ağrısız tedavi imkanı. 🦷', platform: 'instagram', status: 'scheduled', date: 'Yarın 10:00' },
 ];

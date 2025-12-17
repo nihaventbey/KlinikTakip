@@ -107,7 +107,7 @@ export interface Shift {
   staff: { name: string; type: 'doctor' | 'assistant'; status: 'working' | 'off' | 'half' }[];
 }
 
-// --- New Financial Types ---
+// --- Financial Types ---
 
 export interface Expense {
   id: string;
@@ -138,4 +138,35 @@ export interface DoctorPerformance {
   commissionRate: number; // %
   calculatedPayment: number; // Hak Ediş
   patientCount: number;
+}
+
+// --- Marketing Types ---
+
+export interface Lead {
+  id: string;
+  name: string;
+  source: 'Instagram' | 'Google' | 'Referans' | 'Website';
+  status: 'new' | 'contacted' | 'appointed' | 'converted' | 'lost';
+  date: string;
+  phone: string;
+  interest: string;
+}
+
+export interface Campaign {
+  id: string;
+  title: string;
+  type: 'sms' | 'email' | 'social';
+  status: 'active' | 'scheduled' | 'ended' | 'draft';
+  sentCount: number;
+  conversionRate: number;
+  date: string;
+}
+
+export interface SocialPost {
+  id: string;
+  image: string;
+  caption: string;
+  platform: 'instagram' | 'facebook' | 'linkedin';
+  status: 'draft' | 'scheduled' | 'published';
+  date: string;
 }

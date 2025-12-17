@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { PUBLIC_NAV, ADMIN_NAV, APP_NAME } from '../constants';
 import { GlobalSearch } from './GlobalSearch';
+import { useAuth } from '../contexts/AuthContext';
 
 // --- Shared Components ---
 
@@ -172,20 +173,20 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { session, profile, loading, signOut } = useAuth();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Keyboard Shortcut for Search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Protected Route Logic
+  if (loading) {
+    return <div className="h-screen w-full flex items-center justify-center bg-surface-dim">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>;
+  }
+
+  if (!session) {
+    return <Navigate to="/admin/login" replace />;
+  }
 
   return (
     <div className="flex h-screen bg-surface-dim overflow-hidden">
@@ -237,12 +238,18 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
         <div className="p-4 border-t border-gray-100">
           <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden bg-cover bg-center" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuATgFcULf-qOjMqE5zVR3z5LdIdwfBU95INNJVaBXCXIK1Wu412AnsJ8lYcb92K2E_6Y_ts4g2ADLGH4zeiML_J3UL3xN7_uRyW2QDQjZsu-s7ILuWyWGgcWeEaTi9PcFcu9nmS-q0gtiicYBugQzKV-MLMtHzQDI1Z1jKh4L-G5hX-ZJ4S9AECIuEch6FGMMN22GmEsc21gQWH2x5urD6cRYlyWgmM3bhebV0lA__SlZ41GKb4CkMj6yIMjt7r6QsqCJmvzwa7kdL5')" }}></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 truncate">Dr. Mehmet Y.</p>
-              <p className="text-xs text-gray-500 truncate">Baş Hekim</p>
+            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-gray-500">
+                {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                    <span className="material-symbols-outlined text-xl">person</span>
+                )}
             </div>
-            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-red-500" title="Çıkış Yap">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900 truncate">{profile?.full_name || session.user.email}</p>
+              <p className="text-xs text-gray-500 truncate capitalize">{profile?.role || 'Personel'}</p>
+            </div>
+            <button onClick={() => { signOut(); navigate('/'); }} className="text-gray-400 hover:text-red-500" title="Çıkış Yap">
               <span className="material-symbols-outlined">logout</span>
             </button>
           </div>

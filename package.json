@@ -1,23 +1,33 @@
 {
-  "name": "dentcare---klinik-yönetim-sistemi",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "dentcare-app",
+  "version": "1.0.0",
+  "description": "DentCare Klinik Yönetim Sistemi",
+  "main": "index.tsx",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "react-router-dom": "^7.10.1",
-    "recharts": "^3.6.0",
-    "react-dom": "^19.2.3"
+    "@supabase/supabase-js": "^2.39.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^2.10.3",
+    "web-vitals": "^2.1.4"
   },
-  "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

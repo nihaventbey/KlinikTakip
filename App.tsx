@@ -5,6 +5,7 @@ import { HomePage, ServicesPage, TeamPage, AppointmentPage, ContactPage } from '
 import { Dashboard, FinancePage, SettingsPage, PatientsPage, TreatmentsAdminPage } from './pages/admin/AdminPages';
 import { LabTrackingPage, StaffManagerPage, FormBuilderPage } from './pages/admin/OperationsPages';
 import { ClinicalPage } from './pages/admin/ClinicalPages';
+import { MarketingPage } from './pages/admin/MarketingPage';
 import { AppointmentCalendar } from './pages/admin/AppointmentCalendar';
 import { LoginPage } from './pages/admin/Login';
 import { KioskPage } from './pages/public/KioskPage';
@@ -29,6 +30,7 @@ const App: React.FC = () => {
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminLayout><Dashboard /></AdminLayout>} />
         <Route path="/admin/clinical" element={<AdminLayout><ClinicalPage /></AdminLayout>} />
+        <Route path="/admin/marketing" element={<AdminLayout><MarketingPage /></AdminLayout>} />
         <Route path="/admin/appointments" element={<AdminLayout><AppointmentCalendar /></AdminLayout>} />
         <Route path="/admin/patients" element={<AdminLayout><PatientsPage /></AdminLayout>} />
         <Route path="/admin/finance" element={<AdminLayout><FinancePage /></AdminLayout>} />

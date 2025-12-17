@@ -1,19 +1,36 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/UI';
+import { supabase } from '../../lib/supabase';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.session) {
+        navigate('/admin/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Giriş yapılırken bir hata oluştu.');
+    } finally {
       setLoading(false);
-      navigate('/admin/dashboard');
-    }, 1000);
+    }
   };
 
   return (
@@ -43,12 +60,25 @@ export const LoginPage: React.FC = () => {
             <p className="text-gray-500">Lütfen devam etmek için kimlik bilgilerinizi giriniz.</p>
           </div>
 
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-200">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-semibold text-gray-700">Kullanıcı Bilgileri</label>
+              <label className="text-sm font-semibold text-gray-700">E-Posta Adresi</label>
               <div className="relative">
-                <input type="text" className="w-full h-14 rounded-xl border border-gray-200 bg-white px-4 text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="admin" defaultValue="admin" />
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">person</span>
+                <input 
+                  type="email" 
+                  className="w-full h-14 rounded-xl border border-gray-200 bg-white px-4 text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                  placeholder="isim@klinik.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
               </div>
             </div>
 
@@ -58,7 +88,14 @@ export const LoginPage: React.FC = () => {
                 <a href="#" className="text-sm text-primary font-semibold hover:underline">Şifremi Unuttum?</a>
               </div>
               <div className="relative">
-                <input type="password" className="w-full h-14 rounded-xl border border-gray-200 bg-white px-4 text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••" defaultValue="password" />
+                <input 
+                  type="password" 
+                  className="w-full h-14 rounded-xl border border-gray-200 bg-white px-4 text-base focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all" 
+                  placeholder="••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
                 <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer">visibility</span>
               </div>
             </div>
