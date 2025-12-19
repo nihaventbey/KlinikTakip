@@ -101,3 +101,39 @@ export const StaffManagerPage: React.FC = () => {
         </div>
     );
 };
+
+// Dosyanın en altına ekleyebilirsiniz
+export const FormBuilderPage: React.FC = () => {
+    return (
+        <div className="flex flex-col gap-8 animate-fade-in">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Dinamik Form Oluşturucu</h1>
+                    <p className="text-slate-500 text-sm mt-1">Hasta onam formları ve anketleri tasarlayın.</p>
+                </div>
+                <Button icon="add_notes" className="h-12 px-6 rounded-xl font-bold">Yeni Form Tasarla</Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Form kartları örneği */}
+                <Card className="p-8 border-none shadow-xl rounded-[32px] bg-white group cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all">
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-blue-500">description</span>
+                    </div>
+                    <h3 className="text-lg font-extrabold text-slate-900 mb-2">Hasta Onam Formu</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-6">Son Güncelleme: 12.12.2025</p>
+                    <div className="flex gap-2">
+                        <Badge status="pending" />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase self-center">Aktif Kullanımda</span>
+                    </div>
+                </Card>
+                
+                {/* Boş Slot Görünümü */}
+                <div className="border-2 border-dashed border-slate-200 rounded-[32px] flex flex-col items-center justify-center p-8 text-slate-400 hover:border-primary/30 hover:bg-slate-50/50 transition-all cursor-pointer">
+                    <span className="material-symbols-outlined text-4xl mb-2">post_add</span>
+                    <p className="font-bold text-sm">Yeni Şablon Ekle</p>
+                </div>
+            </div>
+        </div>
+    );
+};
