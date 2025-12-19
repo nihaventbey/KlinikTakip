@@ -13,6 +13,12 @@ export interface Doctor {
   specialty: string;
 }
 
+export interface GalleryItem {
+  id: string;
+  url: string;
+  caption: string;
+}
+
 export interface ClinicSettings {
   id: string;
   clinic_name: string;
@@ -21,10 +27,17 @@ export interface ClinicSettings {
   email: string;
   logo_url: string;
   currency: string;
-  // Website Content
+  // Website Hero
   hero_title: string;
   hero_subtitle: string;
+  hero_catchy_text: string;
   hero_image: string;
+  // Gallery
+  gallery: GalleryItem[];
+  // Features Section
+  features_title: string;
+  features_subtitle: string;
+  features: { id: string; title: string; icon: string; desc: string }[];
   // Before/After Area
   service_highlight_title: string;
   service_highlight_desc: string;
@@ -32,9 +45,19 @@ export interface ClinicSettings {
   service_after_img: string;
   service_duration: string;
   service_teeth_count: string;
-  // Features
-  features: { id: string; title: string; icon: string; desc: string }[];
+  // Testimonials
+  testimonials_title: string;
+  testimonials_subtitle: string;
   testimonials: { id: string; name: string; text: string; treatment: string }[];
+  // Team
+  team_title: string;
+  team_subtitle: string;
+  doctors: Doctor[];
+  // Footer & Contact
+  working_hours_weekdays: string;
+  working_hours_saturday: string;
+  social_instagram: string;
+  social_facebook: string;
 }
 
 export interface Patient {
