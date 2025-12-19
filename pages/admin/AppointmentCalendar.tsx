@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../../components/UI';
 import { db } from '../../lib/db';
@@ -6,46 +5,45 @@ import { Appointment } from '../../types';
 
 export const AppointmentCalendar: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const HOURS = Array.from({ length: 9 }, (_, i) => i + 9); // 09:00 - 17:00
+  const HOURS = Array.from({ length: 9 }, (_, i) => i + 9);
 
-  useEffect(() => {
-    const load = () => setAppointments(db.appointments.getAll());
-    load();
-    window.addEventListener('storage_update', load);
-    return () => window.removeEventListener('storage_update', load);
-  }, []);
+  const load = async () => {
+      const data = await db.appointments.getAll();
+      setAppointments(data as any);
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in">
-      <div className="bg-white border-b p-4 flex justify-between items-center shrink-0">
-        <h2 className="text-lg font-bold">Haftalık Randevu Planı</h2>
-        <Button icon="add" onClick={() => {
-            const name = prompt("Hasta Adı:");
-            const time = prompt("Saat (09:00 - 17:00):");
-            if(name && time) db.appointments.add({ patientName: name, doctorName: 'Dr. Ahmet', treatment: 'Kontrol', date: '2023-10-24', time, duration: 30, status: 'confirmed', type: 'visit' });
-        }}>Hızlı Randevu</Button>
+    <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in bg-white rounded-[40px] shadow-2xl overflow-hidden border border-slate-100">
+      <div className="bg-white border-b border-slate-100 p-8 flex justify-between items-center shrink-0">
+        <div className="flex flex-col gap-1">
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Randevu Takvimi</h2>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Klinik Doluluk Oranı: %64</p>
+        </div>
+        <Button icon="add_box" className="h-14 px-8 rounded-2xl font-bold shadow-xl shadow-primary/20">Hızlı Randevu Oluştur</Button>
       </div>
-
-      <div className="flex-1 overflow-auto bg-white flex flex-col relative select-none">
-        <div className="flex border-b sticky top-0 z-20 bg-white">
-          <div className="w-16 border-r p-2 text-xs font-bold text-gray-400">GMT+3</div>
+      <div className="flex-1 overflow-auto bg-white flex flex-col relative no-scrollbar">
+        <div className="flex border-b border-slate-50 sticky top-0 z-20 bg-white/80 backdrop-blur-md">
+          <div className="w-20 border-r border-slate-50 p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center">Saat</div>
           {['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'].map(day => (
-            <div key={day} className="flex-1 border-r p-3 text-center">
-              <div className="text-xs font-bold uppercase text-gray-500">{day}</div>
+            <div key={day} className="flex-1 border-r border-slate-50 p-6 text-center">
+              <div className="text-[11px] font-extrabold uppercase text-slate-400 tracking-[0.2em]">{day}</div>
             </div>
           ))}
         </div>
-
         <div className="relative">
            {HOURS.map(hour => (
-             <div key={hour} className="flex h-24 border-b border-gray-100 relative">
-               <div className="w-16 text-xs text-gray-400 text-right pr-3 -mt-2.5">{hour}:00</div>
-               <div className="flex-1 flex gap-1 p-1">
-                    {/* Render dynamic items matching this hour */}
-                    {appointments.filter(a => parseInt(a.time) === hour).map(a => (
-                        <div key={a.id} className="bg-primary/10 border-l-4 border-primary p-2 rounded flex-1 flex flex-col justify-center">
-                             <p className="text-xs font-bold text-primary truncate">{a.patientName}</p>
-                             <p className="text-[10px] text-gray-500">{a.treatment}</p>
+             <div key={hour} className="flex h-32 border-b border-slate-50 relative group">
+               <div className="w-20 text-[11px] font-extrabold text-slate-300 text-center pt-4 group-hover:text-primary transition-colors uppercase">{hour}:00</div>
+               <div className="flex-1 flex gap-3 p-3 bg-slate-50/20">
+                    {appointments.filter(a => parseInt((a as any).time) === hour).map((a: any) => (
+                        <div key={a.id} className="bg-white border-l-4 border-primary p-5 rounded-2xl flex-1 flex flex-col justify-center shadow-lg shadow-slate-200/50 hover:scale-[1.02] transition-transform cursor-pointer">
+                             <p className="text-sm font-extrabold text-slate-900 truncate">{a.patient?.full_name || a.patientName}</p>
+                             <div className="flex items-center gap-2 mt-1">
+                                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{a.treatment?.name || a.treatment}</p>
+                             </div>
                         </div>
                     ))}
                </div>

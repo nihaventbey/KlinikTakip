@@ -1,137 +1,144 @@
-
-import { Patient, Task, ClinicSettings, Lead, Transaction, TreatmentItem, InventoryItem, Appointment } from '../types';
-
-const INITIAL_SETTINGS: ClinicSettings = {
-  id: '1',
-  clinic_name: 'Burak Çintaş Kliniği',
-  phone: '+90 (312) 000 00 00',
-  address: 'Kızılay, Çankaya / ANKARA',
-  email: 'iletisim@cintasklinik.com',
-  logo_url: '',
-  currency: '₺',
-  hero_title: 'Hayalinizdeki Gülüşe Sanal Olarak Bakın',
-  hero_subtitle: 'Ağrısız, hızlı ve konforlu bir deneyim için hemen randevu alın.',
-  hero_catchy_text: 'Siz sadece gülümseyin, gerisini uzman kadromuz ve en yeni teknolojilerimizle biz tasarlayalım. Türkiye\'nin en gelişmiş dijital diş hekimliği laboratuvarı ile tanışın.',
-  hero_image: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=2068&auto=format&fit=crop',
-  gallery: [
-    { id: '1', url: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=2068', caption: 'Modern Muayene Odalarımız' },
-    { id: '2', url: 'https://images.unsplash.com/photo-1513224502586-d1e602410265?q=80&w=2070', caption: 'En Son Teknoloji Cihazlar' },
-    { id: '3', url: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?q=80&w=2070', caption: 'Hijyenik ve Ferah Alanlar' },
-    { id: '4', url: 'https://images.unsplash.com/photo-1594824476969-519478cae327?q=80&w=2070', caption: 'Uzman Klinik Kadromuz' }
-  ],
-  features_title: 'Neden Biz?',
-  features_subtitle: 'Uzman kadromuz ve teknolojik altyapımızla size en iyi hizmeti sunuyoruz.',
-  features: [
-    { id: '1', title: 'İmplant Tedavisi', icon: 'medical_services', desc: 'Eksik dişleriniz için kalıcı ve doğal görünümlü çözümler.' },
-    { id: '2', title: 'Diş Beyazlatma', icon: 'auto_awesome', desc: 'Lazer teknolojisi ile daha parlak ve beyaz bir gülüş.' },
-    { id: '3', title: 'Ortodonti', icon: 'face', desc: 'Şeffaf plaklar ve tellerle diş çapraşıklıklarını düzeltiyoruz.' }
-  ],
-  service_highlight_title: 'Gülüş Tasarımı (Hollywood Smile)',
-  service_highlight_desc: 'Hastamızın çapraşık diş yapısı ve renk tonu şikayetleri, 6 günlük zirkonyum kaplama tedavisi ile giderildi. Yüz hattına uygun, doğal ve parlak bir gülüş tasarlandı.',
-  service_before_img: 'https://images.unsplash.com/photo-1598256989800-fe5f95da9787?q=80&w=2070',
-  service_after_img: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?q=80&w=2070',
-  service_duration: '6 Gün',
-  service_teeth_count: '20 Diş',
-  testimonials_title: 'Mutlu Gülüşler',
-  testimonials_subtitle: 'Hastalarımızın deneyimleri bizim en büyük referansımızdır.',
-  testimonials: [
-    { id: '1', name: 'Zeynep K.', treatment: 'İmplant', text: 'İmplant sürecim korktuğumdan çok daha rahat geçti. Teşekkürler!' },
-    { id: '2', name: 'Ali R.', treatment: 'Beyazlatma', text: 'Dişlerim hiç bu kadar beyaz olmamıştı. Çok memnun kaldım.' }
-  ],
-  team_title: 'Uzman Doktor Kadromuz',
-  team_subtitle: 'Alanında uzman hekimlerimizle sağlığınız emin ellerde.',
-  doctors: [
-    { id: 'd1', name: 'Dr. Ahmet Yılmaz', title: 'Başhekim', specialty: 'Çene Cerrahı', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=2070' },
-    { id: 'd2', name: 'Dr. Ayşe Demir', title: 'Uzman Doktor', specialty: 'Ortodontist', image: 'https://images.unsplash.com/photo-1594824476969-519478cae327?q=80&w=2070' }
-  ],
-  working_hours_weekdays: '09:00 - 19:00',
-  working_hours_saturday: '09:00 - 14:00',
-  social_instagram: 'https://instagram.com/klinik',
-  social_facebook: 'https://facebook.com/klinik'
-};
-
-const get = <T>(key: string, defaultValue: T): T => {
-  const saved = localStorage.getItem(`dentcare_${key}`);
-  return saved ? JSON.parse(saved) : defaultValue;
-};
-
-const set = (key: string, value: any) => {
-  localStorage.setItem(`dentcare_${key}`, JSON.stringify(value));
-  window.dispatchEvent(new Event('storage_update'));
-};
+import { supabase } from './supabase';
+import { 
+  Patient, Task, ClinicSettings, Lead, 
+  Transaction, TreatmentItem, InventoryItem, Appointment 
+} from '../types';
 
 export const db = {
   settings: {
-    get: () => get<ClinicSettings>('settings', INITIAL_SETTINGS),
-    update: (data: Partial<ClinicSettings>) => {
-      const current = db.settings.get();
-      const updated = { ...current, ...data };
-      set('settings', updated);
-      return updated;
+    get: async () => {
+      const { data, error } = await supabase.from('clinic_settings').select('*').single();
+      if (error) throw error;
+      return data as ClinicSettings;
+    },
+    update: async (id: string, data: Partial<ClinicSettings>) => {
+      const { data: updated, error } = await supabase
+        .from('clinic_settings')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return updated as ClinicSettings;
     }
   },
+
   patients: {
-    getAll: () => get<Patient[]>('patients', []),
-    add: (p: Omit<Patient, 'id'>) => {
-      const list = db.patients.getAll();
-      const newItem = { ...p, id: 'p' + Math.random().toString(36).substr(2, 5) };
-      set('patients', [newItem, ...list]);
-      return newItem;
+    getAll: async () => {
+      const { data, error } = await supabase.from('patients').select('*').order('full_name', { ascending: true });
+      if (error) throw error;
+      return data as Patient[];
     },
-    search: (query: string) => db.patients.getAll().filter(p => p.full_name.toLowerCase().includes(query.toLowerCase()))
+    add: async (patient: Omit<Patient, 'id'>) => {
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').single();
+      const { data, error } = await supabase
+        .from('patients')
+        .insert([{ ...patient, clinic_id: profile?.clinic_id }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Patient;
+    },
+    search: async (query: string) => {
+      const { data, error } = await supabase.from('patients').select('*').ilike('full_name', `%${query}%`);
+      if (error) throw error;
+      return data as Patient[];
+    }
   },
+
   appointments: {
-    getAll: () => get<Appointment[]>('appointments', []),
-    add: (a: Omit<Appointment, 'id'>) => {
-      const list = db.appointments.getAll();
-      const newItem = { ...a, id: 'a' + Math.random().toString(36).substr(2, 5) };
-      set('appointments', [newItem, ...list]);
-      return newItem;
-    }
-  },
-  leads: {
-    getAll: () => get<Lead[]>('leads', []),
-    updateStatus: (id: string, status: Lead['status']) => {
-      const list = db.leads.getAll();
-      set('leads', list.map(l => l.id === id ? { ...l, status } : l));
-    }
-  },
-  transactions: {
-    getAll: () => get<Transaction[]>('transactions', []),
-    add: (t: Omit<Transaction, 'id'>) => {
-      const list = db.transactions.getAll();
-      const newItem = { ...t, id: 'trx' + Math.random().toString(36).substr(2, 5) };
-      set('transactions', [newItem, ...list]);
-      return newItem;
-    }
-  },
-  treatments: {
-    getAll: () => get<TreatmentItem[]>('treatments', []),
-    add: (t: Omit<TreatmentItem, 'id'>) => {
-      const list = db.treatments.getAll();
-      const newItem = { ...t, id: 'tr' + Math.random().toString(36).substr(2, 5) };
-      set('treatments', [newItem, ...list]);
-      return newItem;
-    }
-  },
-  inventory: {
-    getAll: () => get<InventoryItem[]>('inventory', []),
-    update: (id: string, data: Partial<InventoryItem>) => {
-      const list = db.inventory.getAll();
-      set('inventory', list.map(item => item.id === id ? { ...item, ...data } : item));
-    }
-  },
-  tasks: {
-    getAll: () => get<Task[]>('tasks', []),
-    add: (task: Omit<Task, 'id'>) => {
-      const list = db.tasks.getAll();
-      const newTask = { ...task, id: 't' + Math.random().toString(36).substr(2, 5) };
-      set('tasks', [newTask, ...list]);
-      return newTask;
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*, patient:patients(full_name)')
+        .order('start_time', { ascending: true });
+      if (error) throw error;
+      return data;
     },
-    toggle: (id: string) => {
-        const list = db.tasks.getAll();
-        set('tasks', list.map(t => t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t));
+    add: async (apt: any) => {
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').single();
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([{ ...apt, clinic_id: profile?.clinic_id }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  },
+
+  leads: {
+    getAll: async () => {
+      const { data, error } = await supabase.from('marketing_leads').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Lead[];
+    },
+    add: async (lead: any) => {
+      const { error } = await supabase.from('marketing_leads').insert([lead]);
+      if (error) throw error;
+    },
+    updateStatus: async (id: string, status: string) => {
+      const { error } = await supabase.from('marketing_leads').update({ status }).eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  transactions: {
+    getAll: async () => {
+      const { data, error } = await supabase.from('transactions').select('*, patient:patients(full_name)').order('transaction_date', { ascending: false });
+      if (error) throw error;
+      return data as Transaction[];
+    },
+    add: async (trx: any) => {
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').single();
+      const { data, error } = await supabase.from('transactions').insert([{ ...trx, clinic_id: profile?.clinic_id }]).select().single();
+      if (error) throw error;
+      return data;
+    }
+  },
+
+  treatments: {
+    getAll: async () => {
+      const { data, error } = await supabase.from('treatments_catalog').select('*').order('category', { ascending: true });
+      if (error) throw error;
+      return data as TreatmentItem[];
+    },
+    add: async (tr: any) => {
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').single();
+      const { data, error } = await supabase.from('treatments_catalog').insert([{ ...tr, clinic_id: profile?.clinic_id }]).select().single();
+      if (error) throw error;
+      return data;
+    }
+  },
+
+  inventory: {
+    getAll: async () => {
+      const { data, error } = await supabase.from('inventory').select('*').order('name', { ascending: true });
+      if (error) throw error;
+      return data as InventoryItem[];
+    },
+    update: async (id: string, data: any) => {
+      const { error } = await supabase.from('inventory').update(data).eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  tasks: {
+    getAll: async () => {
+      const { data, error } = await supabase.from('tasks').select('*').order('due_date', { ascending: true });
+      if (error) throw error;
+      return data as Task[];
+    },
+    add: async (task: any) => {
+      const { data: profile } = await supabase.from('profiles').select('clinic_id').single();
+      const { data, error } = await supabase.from('tasks').insert([{ ...task, clinic_id: profile?.clinic_id }]).select().single();
+      if (error) throw error;
+      return data;
+    },
+    toggle: async (id: string, currentStatus: string) => {
+      const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+      const { error } = await supabase.from('tasks').update({ status: newStatus }).eq('id', id);
+      if (error) throw error;
     }
   }
 };

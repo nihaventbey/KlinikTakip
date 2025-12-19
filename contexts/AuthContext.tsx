@@ -1,10 +1,11 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface Profile {
   id: string;
   full_name: string;
   role: string;
+  clinic_id: string;
   avatar_url?: string;
 }
 
@@ -14,16 +15,12 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  session: null,
-  user: null,
-  profile: null,
-  loading: true,
-  signIn: async () => {},
-  signOut: () => {},
+  session: null, user: null, profile: null, loading: true,
+  signIn: async () => {}, signOut: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,32 +29,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Sayfa yüklendiğinde oturumu kontrol et
-    const savedSession = localStorage.getItem('dentcare_auth');
-    if (savedSession) {
-      const data = JSON.parse(savedSession);
-      setSession(data);
-      setProfile({ id: '1', full_name: 'Admin Kullanıcı', role: 'admin' });
-    }
-    setLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else setProfile(null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, pass: string) => {
-    // Demo giriş bilgileri
-    if (email === 'admin@klinik.com' && pass === '123456') {
-      const mockSession = { user: { email }, access_token: 'fake-token' };
-      setSession(mockSession);
-      setProfile({ id: '1', full_name: 'Dr. Ahmet Yılmaz', role: 'admin' });
-      localStorage.setItem('dentcare_auth', JSON.stringify(mockSession));
-    } else {
-      throw new Error('E-posta veya şifre hatalı. (Demo: admin@klinik.com / 123456)');
-    }
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) setProfile(data);
   };
 
-  const signOut = () => {
-    setSession(null);
-    setProfile(null);
-    localStorage.removeItem('dentcare_auth');
+  const signIn = async (email: string, pass: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
   };
 
   return (

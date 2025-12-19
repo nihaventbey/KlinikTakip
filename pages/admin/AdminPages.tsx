@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Badge } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,18 +7,28 @@ import { Patient, Transaction, TreatmentItem, GalleryItem } from '../../types';
 
 export const Dashboard: React.FC = () => {
     const [stats, setStats] = useState({ pts: 0, apts: 0, trx: 0 });
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const load = () => {
-            setStats({
-                pts: db.patients.getAll().length,
-                apts: db.appointments.getAll().length,
-                trx: db.transactions.getAll().length
-            });
+        const load = async () => {
+            try {
+                const [p, a, t] = await Promise.all([
+                    db.patients.getAll(),
+                    db.appointments.getAll(),
+                    db.transactions.getAll()
+                ]);
+                setStats({
+                    pts: p.length,
+                    apts: a.length,
+                    trx: t.length
+                });
+            } catch (error) {
+                console.error("Dashboard verileri yüklenemedi:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         load();
-        window.addEventListener('storage_update', load);
-        return () => window.removeEventListener('storage_update', load);
     }, []);
 
     return (
@@ -28,6 +37,7 @@ export const Dashboard: React.FC = () => {
                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Klinik Paneli</h1>
                 <Badge status="active" />
             </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {[
                     { label: 'Toplam Hasta', value: stats.pts, icon: 'group', color: 'bg-blue-500' },
@@ -37,7 +47,7 @@ export const Dashboard: React.FC = () => {
                     <Card key={s.label} className="p-10 flex items-center justify-between border-none shadow-xl shadow-gray-200/50 hover:scale-105 transition-transform">
                         <div>
                             <p className="text-gray-400 font-extrabold text-xs uppercase tracking-widest">{s.label}</p>
-                            <h3 className="text-4xl font-extrabold mt-2 text-gray-900">{s.value}</h3>
+                            <h3 className="text-4xl font-extrabold mt-2 text-gray-900">{loading ? '...' : s.value}</h3>
                         </div>
                         <div className={`w-16 h-16 rounded-2xl ${s.color} text-white flex items-center justify-center shadow-lg`}>
                             <span className="material-symbols-outlined text-3xl">{s.icon}</span>
@@ -51,12 +61,20 @@ export const Dashboard: React.FC = () => {
 
 export const PatientsPage: React.FC = () => {
     const [patients, setPatients] = useState<Patient[]>([]);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
-        const load = () => setPatients(db.patients.getAll());
+        const load = async () => {
+            try {
+                const data = await db.patients.getAll();
+                setPatients(data);
+            } catch (error) {
+                console.error("Hastalar yüklenemedi:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         load();
-        window.addEventListener('storage_update', load);
-        return () => window.removeEventListener('storage_update', load);
     }, []);
 
     return (
@@ -65,34 +83,46 @@ export const PatientsPage: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900">Hastalar</h1>
                 <Button icon="person_add">Yeni Hasta</Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {patients.map(p => (
-                    <Card key={p.id} className="p-6 border-none shadow-xl shadow-gray-200/50">
-                        <div className="flex items-center gap-4">
-                            <img src={p.avatar_url || 'https://i.pravatar.cc/150'} className="w-14 h-14 rounded-2xl object-cover" alt={p.full_name} />
-                            <div>
-                                <h3 className="font-extrabold text-gray-900">{p.full_name}</h3>
-                                <p className="text-sm text-gray-500 font-medium">{p.phone}</p>
-                                <div className="mt-2">
-                                    <Badge status={p.status} />
+            {loading ? (
+                <div className="p-20 text-center text-gray-400">Yükleniyor...</div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {patients.map(p => (
+                        <Card key={p.id} className="p-6 border-none shadow-xl shadow-gray-200/50">
+                            <div className="flex items-center gap-4">
+                                <img src={p.avatar_url || 'https://i.pravatar.cc/150'} className="w-14 h-14 rounded-2xl object-cover" alt={p.full_name} />
+                                <div>
+                                    <h3 className="font-extrabold text-gray-900">{p.full_name}</h3>
+                                    <p className="text-sm text-gray-500 font-medium">{p.phone}</p>
+                                    <div className="mt-2">
+                                        <Badge status={p.status} />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Card>
-                ))}
-            </div>
+                        </Card>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
 
 export const FinancePage: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
-        const load = () => setTransactions(db.transactions.getAll());
+        const load = async () => {
+            try {
+                const data = await db.transactions.getAll();
+                setTransactions(data);
+            } catch (error) {
+                console.error("Finans verileri yüklenemedi:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         load();
-        window.addEventListener('storage_update', load);
-        return () => window.removeEventListener('storage_update', load);
     }, []);
 
     return (
@@ -112,14 +142,18 @@ export const FinancePage: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {transactions.map(t => (
-                            <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
-                                <td className="p-6 font-bold text-gray-900">{t.patient}</td>
-                                <td className="p-6 text-sm text-gray-500 font-medium">{t.type}</td>
-                                <td className="p-6 text-right font-extrabold text-gray-900">{t.amount} ₺</td>
-                                <td className="p-6"><Badge status={t.status} /></td>
-                            </tr>
-                        ))}
+                        {loading ? (
+                            <tr><td colSpan={4} className="p-10 text-center text-gray-400">Yükleniyor...</td></tr>
+                        ) : (
+                            transactions.map(t => (
+                                <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="p-6 font-bold text-gray-900">{(t as any).patient?.full_name || t.patient}</td>
+                                    <td className="p-6 text-sm text-gray-500 font-medium">{t.type}</td>
+                                    <td className="p-6 text-right font-extrabold text-gray-900">{t.amount} ₺</td>
+                                    <td className="p-6"><Badge status={t.status} /></td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </Card>
@@ -129,12 +163,20 @@ export const FinancePage: React.FC = () => {
 
 export const TreatmentsAdminPage: React.FC = () => {
     const [treatments, setTreatments] = useState<TreatmentItem[]>([]);
+    const [loading, setLoading] = useState(true);
     
     useEffect(() => {
-        const load = () => setTreatments(db.treatments.getAll());
+        const load = async () => {
+            try {
+                const data = await db.treatments.getAll();
+                setTreatments(data);
+            } catch (error) {
+                console.error("Tedaviler yüklenemedi:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
         load();
-        window.addEventListener('storage_update', load);
-        return () => window.removeEventListener('storage_update', load);
     }, []);
 
     return (
@@ -144,37 +186,49 @@ export const TreatmentsAdminPage: React.FC = () => {
                 <Button icon="add_circle">Yeni Tedavi Tanımla</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {treatments.map(t => (
-                    <Card key={t.id} className="p-8 border-none shadow-xl shadow-gray-200/50 rounded-[32px] group hover:bg-primary transition-all duration-300">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-[10px] font-extrabold text-primary group-hover:text-white/70 uppercase tracking-widest mb-1">{t.category}</p>
-                                <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-white transition-colors">{t.name}</h3>
-                                <p className="text-sm text-gray-500 group-hover:text-white/60 font-medium mt-1">Süre: {t.duration}</p>
+                {loading ? (
+                    <div className="col-span-2 p-10 text-center text-gray-400">Yükleniyor...</div>
+                ) : (
+                    treatments.map(t => (
+                        <Card key={t.id} className="p-8 border-none shadow-xl shadow-gray-200/50 rounded-[32px] group hover:bg-primary transition-all duration-300">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-[10px] font-extrabold text-primary group-hover:text-white/70 uppercase tracking-widest mb-1">{t.category}</p>
+                                    <h3 className="text-xl font-extrabold text-gray-900 group-hover:text-white transition-colors">{t.name}</h3>
+                                    <p className="text-sm text-gray-500 group-hover:text-white/60 font-medium mt-1">Süre: {t.duration}</p>
+                                </div>
+                                <div className="text-2xl font-extrabold text-primary group-hover:text-white">
+                                    {t.price} ₺
+                                </div>
                             </div>
-                            <div className="text-2xl font-extrabold text-primary group-hover:text-white">
-                                {t.price} ₺
-                            </div>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    ))
+                )}
             </div>
         </div>
     );
 };
 
 export const SettingsPage: React.FC = () => {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, loading } = useSettings();
   const [tab, setTab] = useState<'genel' | 'web' | 'galeri' | 'highlight' | 'ekip' | 'footer'>('genel');
-  const [formData, setFormData] = useState(settings || {} as any);
+  const [formData, setFormData] = useState<any>(null);
   const [msg, setMsg] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { if (settings) setFormData(settings); }, [settings]);
 
   const handleSave = async () => {
-    await updateSettings(formData);
-    setMsg('Web sitesi başarıyla güncellendi!');
-    setTimeout(() => setMsg(''), 3000);
+    setSaving(true);
+    try {
+        await updateSettings(formData);
+        setMsg('Web sitesi başarıyla güncellendi!');
+        setTimeout(() => setMsg(''), 3000);
+    } catch (error) {
+        console.error("Ayarlar kaydedilemedi:", error);
+    } finally {
+        setSaving(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -193,6 +247,8 @@ export const SettingsPage: React.FC = () => {
   const updateGalleryItem = (id: string, field: string, value: string) => {
       setFormData({ ...formData, gallery: formData.gallery.map((g: any) => g.id === id ? { ...g, [field]: value } : g) });
   };
+
+  if (loading || !formData) return <div className="p-20 text-center">Yükleniyor...</div>;
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-8 animate-fade-in pb-20">
@@ -283,11 +339,6 @@ export const SettingsPage: React.FC = () => {
                             <Button onClick={() => removeGalleryItem(item.id)} variant="danger" className="mt-2" icon="delete">Kaldır</Button>
                         </div>
                     ))}
-                    {(!formData.gallery || formData.gallery.length === 0) && (
-                        <div className="col-span-2 p-20 text-center text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-[32px]">
-                            Henüz görsel eklenmedi. Galeri Hero alanında otomatik carousel olarak çalışır.
-                        </div>
-                    )}
                 </div>
             </div>
         )}
@@ -320,7 +371,9 @@ export const SettingsPage: React.FC = () => {
         )}
 
         <div className="pt-10 border-t border-slate-100 flex justify-end">
-            <Button onClick={handleSave} icon="publish" className="h-16 px-16 text-xl rounded-[24px] shadow-2xl shadow-primary/30 font-extrabold">Web Sitesinde Yayınla</Button>
+            <Button onClick={handleSave} disabled={saving} icon="publish" className="h-16 px-16 text-xl rounded-[24px] shadow-2xl shadow-primary/30 font-extrabold">
+                {saving ? 'Yayınlanıyor...' : 'Web Sitesinde Yayınla'}
+            </Button>
         </div>
       </Card>
     </div>

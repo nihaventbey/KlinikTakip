@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ClinicSettings } from '../types';
 import { db } from '../lib/db';
@@ -11,10 +10,7 @@ interface SettingsContextType {
 }
 
 const SettingsContext = createContext<SettingsContextType>({
-  settings: null,
-  loading: true,
-  refreshSettings: async () => {},
-  updateSettings: async () => {},
+  settings: null, loading: true, refreshSettings: async () => {}, updateSettings: async () => {},
 });
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,19 +18,24 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = async () => {
-    const data = db.settings.get();
-    setSettings(data);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const data = await db.settings.get();
+      setSettings(data);
+    } catch (e) {
+      console.error("Ayarlar yüklenemedi:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateSettings = async (newSettings: Partial<ClinicSettings>) => {
-    const updated = db.settings.update(newSettings);
+    if (!settings?.id) return;
+    const updated = await db.settings.update(settings.id, newSettings);
     setSettings(updated);
   };
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  useEffect(() => { fetchSettings(); }, []);
 
   return (
     <SettingsContext.Provider value={{ settings, loading, refreshSettings: fetchSettings, updateSettings }}>
