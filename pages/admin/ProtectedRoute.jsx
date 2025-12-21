@@ -1,14 +1,20 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { ROLE_PERMISSIONS } from '../../config/roles';
-import { logAction } from '../../utils/auditLogger';
+import { ROLE_PERMISSIONS } from './roles';
+import { logAction } from './auditLogger';
+import { useAuth } from '../../contexts/AuthContext';
 
-const ProtectedRoute = ({ user, requiredPermission, children }) => {
+// user prop'u opsiyonel hale getirildi (varsayılan değer: null)
+const ProtectedRoute = ({ user: propUser = null, requiredPermission, children }) => {
+  const { user: contextUser } = useAuth();
+  const user = propUser || contextUser;
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+  // ROLE_PERMISSIONS undefined ise boş dizi döndür (Hata önleme)
+  const userPermissions = (ROLE_PERMISSIONS && ROLE_PERMISSIONS[user.role]) || [];
 
   if (requiredPermission && !userPermissions.includes(requiredPermission)) {
     // Yetkisiz erişim denemesi loglanır

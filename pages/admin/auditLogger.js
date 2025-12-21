@@ -1,20 +1,13 @@
 /**
- * Kritik işlemleri kayıt altına alır (Audit Logs).
- * Yasal uyumluluk için kimin, ne zaman, hangi veriyi değiştirdiği saklanır.
+ * Basit Audit Logger
+ * Sistemdeki kritik işlemleri konsola veya veritabanına loglar.
  */
-export const logAction = (user, action, resource, details = {}) => {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    userId: user?.id || 'anonymous',
-    userRole: user?.role || 'unknown',
-    action,   // Örn: 'DELETE', 'UPDATE', 'VIEW'
-    resource, // Örn: 'PatientRecord', 'FinancialReport'
-    details,  // Değişen verinin eski/yeni hali veya ID'si
-  };
-
-  // TODO: Bu veriyi güvenli bir veritabanına veya log servisine gönderin.
-  // console.log geliştirme ortamı içindir.
-  console.info('AUDIT_LOG:', JSON.stringify(logEntry));
+export const logAction = (user, action, type, details = {}) => {
+  const timestamp = new Date().toISOString();
+  const userId = user ? (user.email || user.id || 'Unknown') : 'Anonymous';
   
-  return logEntry;
+  console.log(`[AUDIT] ${timestamp} | User: ${userId} | Action: ${action} | Type: ${type}`, details);
+  
+  // İleride buraya Supabase insert işlemi eklenebilir:
+  // supabase.from('audit_logs').insert({ user_id: user.id, action, details, created_at: timestamp });
 };

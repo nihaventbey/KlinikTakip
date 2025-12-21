@@ -11,6 +11,7 @@ const AddDoctorForm = () => {
     name: '',
     specialization: '',
     email: '',
+    password: '', // Şifre alanı eklendi
   });
   const [photo, setPhoto] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -26,15 +27,32 @@ const AddDoctorForm = () => {
     setUploading(true);
 
     try {
+      // 1. Admin oturumunu bozmadan yeni kullanıcı oluşturmak için geçici client
+      const tempSupabase = createClient(supabaseUrl, supabaseKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        }
+      });
+
+      // 2. Auth Kullanıcısını Oluştur
+      const { data: authData, error: authError } = await tempSupabase.auth.signUp({
+        email: formData.email,
+        password: formData.password || '123456', // Varsayılan şifre
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Kullanıcı oluşturulamadı.');
+
+      const userId = authData.user.id;
       let photoUrl = '';
 
-      // 1. Fotoğrafı 'doctor-profiles' bucket'ına yükle
+      // 3. Fotoğrafı Yükle
       if (photo) {
         const fileExt = photo.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`; // Benzersiz isim
         const filePath = `${fileName}`;
 
-        // 'doctor-profiles' bucket'ının Supabase panelinden oluşturulmuş ve public olması gerekir.
         const { error: uploadError } = await supabase.storage
           .from('doctor-profiles') 
           .upload(filePath, photo);
@@ -46,23 +64,25 @@ const AddDoctorForm = () => {
         photoUrl = data.publicUrl;
       }
 
-      // 2. Doktor verisini veritabanına kaydet (Örnek tablo: profiles veya doctors)
+      // 4. Doktor verisini 'profiles' tablosuna kaydet (AuthContext burayı okur)
       const { error: dbError } = await supabase
-        .from('doctors')
+        .from('profiles')
         .insert([
           {
-            name: formData.name,
-            specialization: formData.specialization,
+            id: userId, // Auth ID ile eşleşmeli
+            full_name: formData.name,
+            specialty: formData.specialization,
             email: formData.email,
-            photo_url: photoUrl, // Fotoğraf linkini kaydet
-            role: 'DOCTOR'
+            avatar_url: photoUrl,
+            role: 'DOCTOR',
+            updated_at: new Date(),
           },
         ]);
 
       if (dbError) throw dbError;
 
       alert('Doktor başarıyla eklendi!');
-      setFormData({ name: '', specialization: '', email: '' });
+      setFormData({ name: '', specialization: '', email: '', password: '' });
       setPhoto(null);
 
     } catch (error) {
@@ -85,6 +105,9 @@ const AddDoctorForm = () => {
 
         <input type="email" placeholder="E-posta" className="w-full border p-2" required
           value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+
+        <input type="password" placeholder="Şifre (Min 6 karakter)" className="w-full border p-2" required
+          value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
 
         <div>
           <label className="block text-sm text-gray-600">Profil Fotoğrafı</label>

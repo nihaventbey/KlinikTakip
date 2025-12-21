@@ -72,6 +72,7 @@ const AddUserForm = () => {
           {
             id: userId, // Auth ID ile eşleşmeli
             full_name: formData.name,
+            email: formData.email, // Email sütununu da dolduruyoruz
             role: formData.role,
             specialty: formData.role === ROLES.DOCTOR ? formData.specialization : null,
             commission_rate: formData.role === ROLES.DOCTOR ? formData.commissionRate : 0,

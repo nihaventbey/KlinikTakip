@@ -76,19 +76,31 @@ export const SuperAdminDashboard: React.FC = () => {
 
   const handleSave = async () => {
     if (modalType === 'package') {
-      const { error } = await supabase.from('saas_packages').insert([formData]);
+      // Özellikleri virgülden ayırıp array'e çeviriyoruz
+      const featuresArray = typeof formData.features === 'string' 
+        ? formData.features.split(',').map((f: string) => f.trim()) 
+        : [];
+
+      const packageData = { ...formData, features: featuresArray };
+      const { error } = await supabase.from('saas_packages').insert([packageData]);
       if (!error) {
-        setPackages([...packages, { ...formData, id: Math.random().toString() } as Package]);
+        fetchData(); // Veriyi sunucudan tazeleyerek gerçek ID'leri alalım
         setShowModal(false);
       }
     } else if (modalType === 'campaign') {
       const { error } = await supabase.from('saas_campaigns').insert([formData]);
       if (!error) {
-        setCampaigns([...campaigns, { ...formData, id: Math.random().toString() } as Campaign]);
+        fetchData();
         setShowModal(false);
       }
     }
   };
+
+  // Kullanıcıları filtrele
+  const filteredUsers = users.filter(u => {
+    if (clinicFilter === 'all') return true;
+    return u.clinic_id === clinicFilter;
+  });
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-20">
@@ -194,6 +206,20 @@ export const SuperAdminDashboard: React.FC = () => {
 
         {activeTab === 'tenants' && (
           <Card className="border-none shadow-xl rounded-[32px] overflow-hidden">
+            {/* Filtreleme Alanı */}
+            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center gap-4">
+              <span className="text-sm font-bold text-gray-500">Klinik Filtrele:</span>
+              <select 
+                value={clinicFilter} 
+                onChange={(e) => setClinicFilter(e.target.value)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-blue-600 min-w-[200px]"
+              >
+                <option value="all">Tüm Klinikler</option>
+                {tenants.map(t => (
+                  <option key={t.id} value={t.id}>{t.clinic_name}</option>
+                ))}
+              </select>
+            </div>
             <table className="w-full text-left">
               <thead className="bg-gray-50">
                 <tr>
@@ -205,15 +231,23 @@ export const SuperAdminDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {tenants.map(t => (
-                  <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="p-6 font-bold text-gray-900">{t.clinic_name}</td>
-                    <td className="p-6 text-sm text-blue-600 font-medium">{t.domain}</td>
-                    <td className="p-6 text-sm font-bold">Gold Paket</td>
-                    <td className="p-6 text-sm text-gray-500">{new Date(t.subscription_end).toLocaleDateString()}</td>
-                    <td className="p-6"><Badge status={t.status} /></td>
-                  </tr>
-                ))}
+                {tenants.map(t => {
+                  // Paketin adını packages state'inden bulalım (Röntgen görünümü)
+                  const packageName = packages.find(p => p.id === t.package_id)?.name || 'Paket Yok';
+                  
+                  // Süre dolmuş mu kontrolü
+                  const isExpired = t.subscription_end ? new Date(t.subscription_end) < new Date() : false;
+                  
+                  return (
+                    <tr key={t.id} className={`transition-colors ${isExpired ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
+                      <td className="p-6 font-bold text-gray-900">{t.clinic_name}</td>
+                      <td className="p-6 text-sm text-blue-600 font-medium">{t.domain}</td>
+                      <td className="p-6 text-sm font-bold">{packageName}</td>
+                      <td className={`p-6 text-sm ${isExpired ? 'text-red-600 font-bold' : 'text-gray-500'}`}>{t.subscription_end ? new Date(t.subscription_end).toLocaleDateString() : '-'}</td>
+                      <td className="p-6"><Badge status={isExpired ? 'expired' : t.status} /></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </Card>
@@ -229,7 +263,10 @@ export const SuperAdminDashboard: React.FC = () => {
               {modalType === 'package' ? (
                 <>
                   <input placeholder="Paket Adı" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, name: e.target.value})} />
-                  <input type="number" placeholder="Fiyat" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, price: e.target.value})} />
+                  <input type="number" placeholder="Fiyat (₺)" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, price: e.target.value})} />
+                  <input type="number" placeholder="Süre (Ay)" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, duration_months: e.target.value})} />
+                  <input type="number" placeholder="Maks. Kullanıcı" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, max_users: e.target.value})} />
+                  <textarea placeholder="Özellikler (Virgülle ayırın: Randevu, Raporlama, SMS...)" className="p-4 bg-gray-50 rounded-xl font-bold h-24 resize-none" onChange={e => setFormData({...formData, features: e.target.value})} />
                 </>
               ) : (
                 <>

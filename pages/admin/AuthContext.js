@@ -59,8 +59,22 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, supabase }}>
+    <AuthContext.Provider value={{ user, loading, supabase, signIn, signOut }}>
       {!loading && children}
     </AuthContext.Provider>
   );
