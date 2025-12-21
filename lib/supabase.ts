@@ -14,7 +14,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export type Profile = {
   id: string;
   full_name: string | null;
-  role: 'admin' | 'doctor' | 'assistant' | 'receptionist';
+  // Hem veritabanındaki büyük harfleri hem de kodun beklediği küçük harfleri kapsayalım
+  // En önemlisi: SUPER_ADMIN ekledik.
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'admin' | 'doctor' | 'assistant' | 'receptionist';
   specialty?: string;
   avatar_url?: string;
+  clinic_id?: string | null; // Bunu da eklemekte fayda var
 };

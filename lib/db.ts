@@ -6,20 +6,51 @@ import {
 
 export const db = {
   settings: {
-    get: async () => {
-      const { data, error } = await supabase.from('clinic_settings').select('*').single();
-      if (error) throw error;
-      return data as ClinicSettings;
-    },
-    update: async (id: string, data: Partial<ClinicSettings>) => {
-      const { data: updated, error } = await supabase
-        .from('clinic_settings')
-        .update({ ...data, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
+    get: async (clinicId: number) => {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*, clinic_settings(*)') // İlişkiyi tablo adıyla direkt belirt
+        .eq('id', clinicId)
         .single();
-      if (error) throw error;
-      return updated as ClinicSettings;
+      
+      if (error) {
+        console.error('db.settings.get error:', error);
+        throw error;
+      }
+      if (!data) return null;
+
+      const { clinic_settings, ...clinicData } = data;
+      
+      const result: ClinicWithSettings = {
+        ...clinicData,
+        settings: Array.isArray(clinic_settings) ? clinic_settings[0] || null : clinic_settings,
+      };
+
+      return result;
+    },
+    update: async (clinicId: number, data: Partial<ClinicWithSettings>) => {
+      const { settings, ...clinicInfo } = data;
+
+      // 1. 'clinics' tablosunu (temel bilgiler) güncelle
+      if (Object.keys(clinicInfo).length > 0) {
+        const { error } = await supabase
+          .from('clinics')
+          .update(clinicInfo)
+          .eq('id', clinicId);
+        if (error) throw error;
+      }
+
+      // 2. 'clinic_settings' tablosunu (ayar bilgileri) "upsert" et
+      if (settings && Object.keys(settings).length > 0) {
+        const { error } = await supabase
+          .from('clinic_settings')
+          .upsert({ ...settings, clinic_id: clinicId });
+        if (error) throw error;
+      }
+
+      // 3. Güncellenmiş veriyi birleşik olarak yeniden çek ve döndür
+      const updatedData = await db.settings.get(clinicId);
+      return updatedData;
     }
   },
 

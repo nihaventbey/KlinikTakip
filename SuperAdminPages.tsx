@@ -1,48 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Badge } from './src/components/UI';
-import { supabase } from './src/lib/supabase';
+import { Card, Button, Badge } from './components/UI';
+import { supabase } from './lib/supabase';
 
 // Tip Tanımlamaları
-interface Package {
-  id: string;
+interface Clinic {
+  id: number;
   name: string;
-  price: number;
-  duration_months: number;
-  max_users: number;
-  features: string[];
+  address: string;
+  phone_number: string;
 }
 
-interface Campaign {
-  id: string;
-  code: string;
-  discount_percent: number;
-  valid_until: string;
-  is_active: boolean;
+interface Profile {
+  id: string; // Corresponds to auth.users.id
+  full_name: string;
+  role: string;
+  email: string;
+  clinic_id: number;
+  clinics: {
+    name: string;
+  };
 }
 
-interface Tenant {
-  id: string;
-  clinic_name: string;
-  domain: string;
-  package_id: string;
-  subscription_end: string;
-  status: 'active' | 'expired' | 'pending';
-}
+const USER_ROLES = ['admin', 'doctor', 'assistant', 'receptionist', 'accountant'];
 
 export const SuperAdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'packages' | 'campaigns' | 'tenants'>('overview');
-  const [stats, setStats] = useState({ totalRevenue: 0, activeClinics: 0, activeCampaigns: 0 });
-  
-  // Veri State'leri
-  const [packages, setPackages] = useState<Package[]>([]);
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Form State'leri
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<'package' | 'campaign' | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [isNewUser, setIsNewUser] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -51,21 +40,22 @@ export const SuperAdminDashboard: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Supabase'den verileri çek (Tabloların var olduğu varsayılmıştır)
-      const { data: pkgData } = await supabase.from('saas_packages').select('*');
-      const { data: cmpData } = await supabase.from('saas_campaigns').select('*');
-      const { data: tntData } = await supabase.from('saas_tenants').select('*');
+      const { data: clinicsData, error: clinicsError } = await supabase.from('clinics').select('*');
+      if (clinicsError) throw clinicsError;
+      if (clinicsData) setClinics(clinicsData);
 
-      if (pkgData) setPackages(pkgData);
-      if (cmpData) setCampaigns(cmpData);
-      if (tntData) setTenants(tntData);
-
-      // İstatistikleri hesapla
-      setStats({
-        totalRevenue: 154000, // Örnek veri, gerçekte transactions tablosundan toplanmalı
-        activeClinics: tntData?.filter((t: any) => t.status === 'active').length || 0,
-        activeCampaigns: cmpData?.filter((c: any) => c.is_active).length || 0
-      });
+      const { data: profilesData, error: profilesError } = await supabase.from('profiles').select(`
+        id,
+        full_name,
+        role,
+        email,
+        clinic_id,
+        clinics (
+            name
+        )
+      `);
+      if (profilesError) throw profilesError;
+      if (profilesData) setProfiles(profilesData as Profile[]);
 
     } catch (error) {
       console.error("Veri çekme hatası:", error);
@@ -74,212 +64,171 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (modalType === 'package') {
-      // Özellikleri virgülden ayırıp array'e çeviriyoruz
-      const featuresArray = typeof formData.features === 'string' 
-        ? formData.features.split(',').map((f: string) => f.trim()) 
-        : [];
+  const handleOpenModal = (user: Profile | null = null) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({ ...user });
+      setIsNewUser(false);
+    } else {
+      setEditingUser(null);
+      setFormData({ role: 'assistant', clinic_id: clinics[0]?.id || '' });
+      setIsNewUser(true);
+    }
+    setShowUserModal(true);
+  };
 
-      const packageData = { ...formData, features: featuresArray };
-      const { error } = await supabase.from('saas_packages').insert([packageData]);
-      if (!error) {
-        fetchData(); // Veriyi sunucudan tazeleyerek gerçek ID'leri alalım
-        setShowModal(false);
+  const handleSaveUser = async () => {
+    if (isNewUser) {
+      // Admin client to create user
+      // This requires running in a secure environment (server-side) or enabling the Admin API carefully.
+      // We will simulate the call here. For a real app, create an edge function.
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true,
+        user_metadata: { full_name: formData.full_name }
+      });
+
+      if (error || !data.user) {
+        console.error("Yeni kullanıcı oluşturma hatası:", error);
+        return;
       }
-    } else if (modalType === 'campaign') {
-      const { error } = await supabase.from('saas_campaigns').insert([formData]);
-      if (!error) {
+      
+      // Now update the profile with role and clinic
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: formData.role, clinic_id: formData.clinic_id, full_name: formData.full_name, email: formData.email })
+        .eq('id', data.user.id);
+
+      if (profileError) {
+        console.error("Profil güncelleme hatası:", profileError);
+      }
+
+    } else if (editingUser) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          role: formData.role,
+          clinic_id: formData.clinic_id
+        })
+        .eq('id', editingUser.id);
+      
+      if (error) {
+        console.error("Kullanıcı güncelleme hatası:", error);
+      }
+    }
+
+    setShowUserModal(false);
+    fetchData(); // Refresh data
+  };
+
+  const handleDeleteUser = async (user: Profile) => {
+    if (window.confirm(`${user.full_name} adlı kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`)) {
+      // This requires an admin-privileged Supabase client. 
+      // It should ideally be called from a secure edge function.
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      if (error) {
+        console.error('Kullanıcı silme hatası:', error);
+        alert(`Hata: ${error.message}`);
+      } else {
+        alert('Kullanıcı başarıyla silindi.');
         fetchData();
-        setShowModal(false);
       }
     }
   };
-
-  // Kullanıcıları filtrele
-  const filteredUsers = users.filter(u => {
-    if (clinicFilter === 'all') return true;
-    return u.clinic_id === clinicFilter;
-  });
+  
+  const filteredProfiles = profiles.filter(p => 
+    p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-20">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">SüperAdmin Portalı</h1>
-          <p className="text-gray-500 font-medium">SaaS Yönetimi ve Satış Kontrolü</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Klinik ve Kullanıcı Yönetimi</h1>
+          <p className="text-gray-500 font-medium">Tüm klinikleri ve kullanıcıları yönetin.</p>
         </div>
-        <div className="flex gap-2">
-           <Button icon="add_business" onClick={() => { setModalType('package'); setShowModal(true); }}>Paket Ekle</Button>
-           <Button icon="campaign" variant="secondary" onClick={() => { setModalType('campaign'); setShowModal(true); }}>Kampanya Oluştur</Button>
+        <Button icon="person_add" onClick={() => handleOpenModal()}>Yeni Kullanıcı Ekle</Button>
+      </div>
+
+       {/* Search Bar */}
+       <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Kullanıcı adı veya e-posta ile ara..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl font-medium outline-none focus:border-blue-600"
+          />
         </div>
-      </div>
 
-      {/* İstatistik Kartları */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 border-none shadow-xl bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-[24px]">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-blue-200 font-bold text-xs uppercase">Toplam Gelir</p>
-              <h3 className="text-3xl font-extrabold mt-1">{stats.totalRevenue.toLocaleString()} ₺</h3>
-            </div>
-            <span className="material-symbols-outlined text-4xl opacity-50">payments</span>
-          </div>
-        </Card>
-        <Card className="p-6 border-none shadow-xl bg-white rounded-[24px]">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 font-bold text-xs uppercase">Aktif Klinikler</p>
-              <h3 className="text-3xl font-extrabold mt-1 text-gray-900">{stats.activeClinics}</h3>
-            </div>
-            <span className="material-symbols-outlined text-4xl text-green-500 bg-green-50 p-2 rounded-xl">domain</span>
-          </div>
-        </Card>
-        <Card className="p-6 border-none shadow-xl bg-white rounded-[24px]">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-400 font-bold text-xs uppercase">Aktif Kampanyalar</p>
-              <h3 className="text-3xl font-extrabold mt-1 text-gray-900">{stats.activeCampaigns}</h3>
-            </div>
-            <span className="material-symbols-outlined text-4xl text-purple-500 bg-purple-50 p-2 rounded-xl">local_offer</span>
-          </div>
-        </Card>
-      </div>
-
-      {/* Sekmeler */}
-      <div className="flex gap-2 border-b border-gray-100">
-        {['overview', 'packages', 'campaigns', 'tenants'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`px-6 py-3 font-bold text-sm transition-all capitalize ${activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            {tab === 'tenants' ? 'Klinikler' : tab === 'packages' ? 'Paketler' : tab === 'campaigns' ? 'Kampanyalar' : 'Genel Bakış'}
-          </button>
-        ))}
-      </div>
-
-      {/* İçerik Alanı */}
-      <div className="min-h-[400px]">
-        {activeTab === 'packages' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {packages.map(pkg => (
-              <Card key={pkg.id} className="p-8 border-none shadow-lg hover:shadow-xl transition-all rounded-[32px] relative overflow-hidden group">
-                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-bl-2xl">{pkg.price} ₺ / Ay</div>
-                <h3 className="text-xl font-extrabold text-gray-900 mb-2">{pkg.name}</h3>
-                <p className="text-sm text-gray-500 mb-6">{pkg.max_users} Kullanıcı • {pkg.duration_months} Ay</p>
-                <ul className="space-y-2 mb-6">
-                  {pkg.features?.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm font-medium text-gray-600">
-                      <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button className="w-full" variant="outline">Düzenle</Button>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'campaigns' && (
-          <div className="space-y-4">
-            {campaigns.map(cmp => (
-              <div key={cmp.id} className="flex items-center justify-between p-6 bg-white rounded-2xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center font-bold text-xl">
-                    %
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg">{cmp.code}</h4>
-                    <p className="text-sm text-gray-500">Son Geçerlilik: {new Date(cmp.valid_until).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-extrabold text-2xl text-purple-600">%{cmp.discount_percent}</p>
-                  <Badge status={cmp.is_active ? 'active' : 'inactive'} />
-                </div>
+      {loading ? <p>Yükleniyor...</p> : (
+        <div className="space-y-10">
+          {clinics.map(clinic => (
+            <Card key={clinic.id} className="border-none shadow-xl rounded-[32px] overflow-hidden">
+              <div className="p-6 bg-gray-50 border-b border-gray-100">
+                <h2 className="text-xl font-extrabold text-gray-800">{clinic.name}</h2>
+                <p className="text-sm text-gray-500">{clinic.address}</p>
               </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'tenants' && (
-          <Card className="border-none shadow-xl rounded-[32px] overflow-hidden">
-            {/* Filtreleme Alanı */}
-            <div className="p-6 border-b border-gray-50 bg-gray-50/50 flex items-center gap-4">
-              <span className="text-sm font-bold text-gray-500">Klinik Filtrele:</span>
-              <select 
-                value={clinicFilter} 
-                onChange={(e) => setClinicFilter(e.target.value)}
-                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-blue-600 min-w-[200px]"
-              >
-                <option value="all">Tüm Klinikler</option>
-                {tenants.map(t => (
-                  <option key={t.id} value={t.id}>{t.clinic_name}</option>
-                ))}
-              </select>
-            </div>
-            <table className="w-full text-left">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Klinik Adı</th>
-                  <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Domain</th>
-                  <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Paket</th>
-                  <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Bitiş Tarihi</th>
-                  <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Durum</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {tenants.map(t => {
-                  // Paketin adını packages state'inden bulalım (Röntgen görünümü)
-                  const packageName = packages.find(p => p.id === t.package_id)?.name || 'Paket Yok';
-                  
-                  // Süre dolmuş mu kontrolü
-                  const isExpired = t.subscription_end ? new Date(t.subscription_end) < new Date() : false;
-                  
-                  return (
-                    <tr key={t.id} className={`transition-colors ${isExpired ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}`}>
-                      <td className="p-6 font-bold text-gray-900">{t.clinic_name}</td>
-                      <td className="p-6 text-sm text-blue-600 font-medium">{t.domain}</td>
-                      <td className="p-6 text-sm font-bold">{packageName}</td>
-                      <td className={`p-6 text-sm ${isExpired ? 'text-red-600 font-bold' : 'text-gray-500'}`}>{t.subscription_end ? new Date(t.subscription_end).toLocaleDateString() : '-'}</td>
-                      <td className="p-6"><Badge status={isExpired ? 'expired' : t.status} /></td>
+              <table className="w-full text-left">
+                <thead className="bg-gray-50/50">
+                  <tr>
+                    <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Ad Soyad</th>
+                    <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">E-posta</th>
+                    <th className="p-6 text-xs font-extrabold text-gray-400 uppercase">Rol</th>
+                    <th className="p-6 text-xs font-extrabold text-gray-400 uppercase text-right">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredProfiles.filter(p => p.clinic_id === clinic.id).map(user => (
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-6 font-bold text-gray-900">{user.full_name || '-'}</td>
+                      <td className="p-6 text-sm text-gray-600 font-medium">{user.email || '-'}</td>
+                      <td className="p-6"><Badge status={user.role as any} text={user.role} /></td>
+                      <td className="p-6 text-right">
+                        <Button size="sm" icon="edit" variant="ghost" onClick={() => handleOpenModal(user)}>Düzenle</Button>
+                        <Button size="sm" icon="delete" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => handleDeleteUser(user)}>Sil</Button>
+                      </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-        )}
-      </div>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Modal (Basit Örnek) */}
-      {showModal && (
+      {/* User Edit/Create Modal */}
+      {showUserModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl">
-            <h3 className="text-2xl font-extrabold mb-6">{modalType === 'package' ? 'Yeni Paket' : 'Yeni Kampanya'}</h3>
+          <Card className="p-8 w-full max-w-lg shadow-2xl rounded-[32px]">
+            <h3 className="text-2xl font-extrabold mb-6">{isNewUser ? 'Yeni Kullanıcı Oluştur' : 'Kullanıcıyı Düzenle'}</h3>
             <div className="flex flex-col gap-4">
-              {modalType === 'package' ? (
-                <>
-                  <input placeholder="Paket Adı" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, name: e.target.value})} />
-                  <input type="number" placeholder="Fiyat (₺)" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, price: e.target.value})} />
-                  <input type="number" placeholder="Süre (Ay)" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, duration_months: e.target.value})} />
-                  <input type="number" placeholder="Maks. Kullanıcı" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, max_users: e.target.value})} />
-                  <textarea placeholder="Özellikler (Virgülle ayırın: Randevu, Raporlama, SMS...)" className="p-4 bg-gray-50 rounded-xl font-bold h-24 resize-none" onChange={e => setFormData({...formData, features: e.target.value})} />
-                </>
-              ) : (
-                <>
-                  <input placeholder="Kampanya Kodu" className="p-4 bg-gray-50 rounded-xl font-bold uppercase" onChange={e => setFormData({...formData, code: e.target.value})} />
-                  <input type="number" placeholder="İndirim Oranı (%)" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, discount_percent: e.target.value})} />
-                </>
-              )}
+                <input placeholder="Ad Soyad" value={formData.full_name || ''} className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, full_name: e.target.value})} />
+                <input type="email" placeholder="E-posta" value={formData.email || ''} disabled={!isNewUser} className="p-4 bg-gray-50 rounded-xl font-bold disabled:bg-gray-200" onChange={e => setFormData({...formData, email: e.target.value})} />
+                {isNewUser && (
+                  <input type="password" placeholder="Şifre" className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, password: e.target.value})} />
+                )}
+                
+                <select value={formData.role || ''} className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, role: e.target.value})}>
+                  <option value="" disabled>Rol Seçin</option>
+                  {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                </select>
+
+                <select value={formData.clinic_id || ''} className="p-4 bg-gray-50 rounded-xl font-bold" onChange={e => setFormData({...formData, clinic_id: parseInt(e.target.value)})}>
+                  <option value="" disabled>Klinik Seçin</option>
+                  {clinics.map(clinic => <option key={clinic.id} value={clinic.id}>{clinic.name}</option>)}
+                </select>
+
               <div className="flex gap-2 mt-4">
-                <Button variant="outline" className="flex-1" onClick={() => setShowModal(false)}>İptal</Button>
-                <Button className="flex-1" onClick={handleSave}>Kaydet</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowUserModal(false)}>İptal</Button>
+                <Button className="flex-1" onClick={handleSaveUser}>Kaydet</Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

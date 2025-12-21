@@ -5,8 +5,9 @@ interface Profile {
   id: string;
   full_name: string;
   role: string;
-  clinic_id: string;
+  clinic_id: string | null;
   avatar_url?: string;
+  email: string;
 }
 
 interface AuthContextType {
@@ -14,13 +15,17 @@ interface AuthContextType {
   user: any | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, pass: string) => Promise<void>;
+  signIn: (email: string, pass: string) => Promise<any>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  session: null, user: null, profile: null, loading: true,
-  signIn: async () => {}, signOut: async () => {},
+  session: null, 
+  user: null, 
+  profile: null, 
+  loading: true,
+  signIn: async () => {}, 
+  signOut: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -28,38 +33,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+      return data;
+    } catch (err) {
+      console.error("Profil yükleme hatası:", err);
+      setProfile(null);
+      return null;
+    }
+  };
+
   useEffect(() => {
+    // İlk oturum kontrolü
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      setLoading(false);
+      if (session) {
+        fetchProfile(session.user.id).finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Oturum değişikliklerini dinle
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data);
-  };
-
   const signIn = async (email: string, pass: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
     if (error) throw error;
+    return data;
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setProfile(null);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user: session?.user, 
+      profile, 
+      loading, 
+      signIn, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );

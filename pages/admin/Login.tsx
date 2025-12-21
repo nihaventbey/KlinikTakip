@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { signIn, supabase } = useAuth() as any; // Supabase erişimi için
+  const { signIn } = useAuth() as any; // Supabase erişimi için
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

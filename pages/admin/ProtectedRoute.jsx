@@ -1,24 +1,32 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { ROLE_PERMISSIONS } from './roles';
-import { logAction } from './auditLogger';
 import { useAuth } from '../../contexts/AuthContext';
 
-// user prop'u opsiyonel hale getirildi (varsayılan değer: null)
-const ProtectedRoute = ({ user: propUser = null, requiredPermission, children }) => {
-  const { user: contextUser } = useAuth();
-  const user = propUser || contextUser;
+const ProtectedRoute = ({ requiredPermission, children }) => {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-dim">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
-  // ROLE_PERMISSIONS undefined ise boş dizi döndür (Hata önleme)
-  const userPermissions = (ROLE_PERMISSIONS && ROLE_PERMISSIONS[user.role]) || [];
+  if (!user) {
+    const loginPath = location.pathname.startsWith('/superadmin') ? '/superadmin/login' : '/admin/login';
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
+  }
+
+  if (!profile) return null;
+
+  // Yetki kontrolünü profile.role üzerinden yapıyoruz
+  const userPermissions = (ROLE_PERMISSIONS && ROLE_PERMISSIONS[profile.role]) || [];
 
   if (requiredPermission && !userPermissions.includes(requiredPermission)) {
-    // Yetkisiz erişim denemesi loglanır
-    logAction(user, 'UNAUTHORIZED_ACCESS_ATTEMPT', 'ROUTE', { required: requiredPermission });
+    console.warn(`Yetkisiz Erişim: ${profile.role} -> ${requiredPermission}`);
     return <Navigate to="/unauthorized" replace />;
   }
 

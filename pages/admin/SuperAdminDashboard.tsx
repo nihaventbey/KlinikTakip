@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROLES } from './roles';
+import { supabase } from '../../lib/supabase';
 
 interface Profile {
   id: string;
@@ -14,7 +15,7 @@ interface Profile {
 
 export const SuperAdminDashboard: React.FC = () => {
   // TypeScript hatasını gidermek için 'as any' kullanıyoruz
-  const { signOut, supabase } = useAuth() as any;
+  const { signOut } = useAuth() as any;
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);

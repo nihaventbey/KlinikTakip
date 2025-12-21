@@ -1,22 +1,23 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { createClient } from '@supabase/supabase-js';
+// contexts/AuthContext.js (veya ClinicContext.js)
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase'; // Supabase istemcinizin yolu
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Mevcut oturumu kontrol et
+    // Oturum kontrolü
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
       if (session?.user) {
-        await fetchUserRole(session.user);
+        setUser(session.user);
+        await fetchProfile(session.user.id);
       } else {
         setLoading(false);
       }
@@ -24,60 +25,108 @@ export const AuthProvider = ({ children }) => {
 
     checkUser();
 
-    // 2. Oturum değişikliklerini dinle (Giriş/Çıkış)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        await fetchUserRole(session.user);
+        setUser(session.user);
+        await fetchProfile(session.user.id);
       } else {
         setUser(null);
+        setProfile(null);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchUserRole = async (authUser) => {
+  const fetchProfile = async (userId) => {
     try {
-      // public.profiles tablosundan rolü çek
-      const { data: profile } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('role, full_name')
-        .eq('id', authUser.id)
+        .select('*')
+        .eq('id', userId)
         .single();
 
-      // Auth verisi ile profil verisini birleştir
-      setUser({
-        ...authUser,
-        role: profile?.role || 'PATIENT', // Varsayılan rol
-        name: profile?.full_name || authUser.email
-      });
+      if (error) throw error;
+
+      // ÖNEMLİ: Süper Admin kontrolü
+      const isSuperAdmin = data.role === 'SUPER_ADMIN';
+
+      // Eğer Süper Admin değilse ve clinic_id yoksa hata fırlatabilir veya logout yapabilirsiniz
+      if (!isSuperAdmin && !data.clinic_id) {
+        console.error("Kullanıcının kliniği bulunamadı.");
+        await supabase.auth.signOut(); // Hatalı durumu önlemek için çıkış yap
+        return; // İşlemi durdur
+      }
+
+      setProfile(data);
     } catch (error) {
-      console.error('Rol çekme hatası:', error);
+      console.error('Profil yüklenirken hata:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const signIn = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data;
+  const value = {
+    user,
+    profile,
+    // Yardımcı flag'ler
+    isSuperAdmin: profile?.role === 'SUPER_ADMIN',
+    clinicId: profile?.clinic_id || null, // Süper adminde null olabilir
+    loading
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, loading, supabase, signIn, signOut }}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+/**
+ * 2. MADDE ÇÖZÜMÜ:
+ * Bu hook, Süper Admin kontrolünü otomatik yapar.
+ * Sayfalarda `supabase.from...` yerine bu hook'u kullanın.
+ * 
+ * Örnek Kullanım:
+ * const { data: patients, loading } = useClinicData('patients');
+ */
+export const useClinicData = (tableName, options = { select: '*', order: { column: 'created_at', ascending: false } }) => {
+  const { profile, isSuperAdmin, clinicId } = useAuth();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    if (!profile) return;
+    
+      try {
+        setLoading(true);
+        let query = supabase.from(tableName).select(options.select);
+
+        // MANTIK BURADA: Süper Admin değilse klinik filtresi ekle
+        if (!isSuperAdmin) {
+          query = query.eq('clinic_id', clinicId);
+        }
+
+        if (options.order) {
+          query = query.order(options.order.column, { ascending: options.order.ascending });
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        setData(data);
+      } catch (error) {
+        console.error(`${tableName} verisi çekilirken hata:`, error);
+        setError(error);
+      } finally {
+        setLoading(false);
+      }
+  }, [tableName, JSON.stringify(options), profile, isSuperAdmin, clinicId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+};

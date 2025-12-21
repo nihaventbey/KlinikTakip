@@ -33,8 +33,9 @@ export const Button: React.FC<ButtonProps> = ({ children, variant = 'primary', i
 };
 
 // Badge
-export const Badge: React.FC<{ status: string }> = ({ status }) => {
+export const Badge: React.FC<{ status: string; text?: string }> = ({ status, text }) => {
   const styles: Record<string, string> = {
+    // Existing statuses
     confirmed: "bg-emerald-50 text-emerald-700 border-emerald-100",
     paid: "bg-emerald-50 text-emerald-700 border-emerald-100",
     active: "bg-emerald-50 text-emerald-700 border-emerald-100",
@@ -43,6 +44,15 @@ export const Badge: React.FC<{ status: string }> = ({ status }) => {
     ongoing: "bg-sky-50 text-sky-600 border-sky-100",
     cancelled: "bg-slate-50 text-slate-500 border-slate-100",
     late: "bg-rose-50 text-rose-700 border-rose-100",
+    expired: "bg-rose-50 text-rose-700 border-rose-100",
+
+    // New roles
+    superadmin: "bg-red-500 text-white border-red-600",
+    admin: "bg-blue-500 text-white border-blue-600",
+    doctor: "bg-green-500 text-white border-green-600",
+    assistant: "bg-indigo-500 text-white border-indigo-600",
+    receptionist: "bg-purple-500 text-white border-purple-600",
+    accountant: "bg-yellow-500 text-white border-yellow-600",
   };
 
   const labels: Record<string, string> = {
@@ -53,12 +63,15 @@ export const Badge: React.FC<{ status: string }> = ({ status }) => {
     pending: "Bekliyor",
     ongoing: "Süreçte",
     cancelled: "İptal",
-    late: "Gecikme"
+    late: "Gecikme",
+    expired: "Süresi Dolmuş",
   };
 
+  const displayText = text || labels[status] || status;
+
   return (
-    <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${styles[status] || 'bg-slate-100 text-slate-800'}`}>
-      {labels[status] || status}
+    <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${styles[status.toLowerCase()] || 'bg-slate-100 text-slate-800'}`}>
+      {displayText}
     </span>
   );
 };
