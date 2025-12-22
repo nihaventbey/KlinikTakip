@@ -11,7 +11,17 @@ import SuperDashboard from './pages/superadmin/Dashboard';
 
 // Layouts
 import AdminLayout from './layouts/AdminLayout';
-import SuperAdminLayout from './layouts/SuperAdminLayout';
+import PatientList from './pages/admin/patients/PatientList';
+import Dashboard from './pages/admin/Dashboard';
+import SuperAdminLayout from './layouts/SuperAdminLayout'; // <-- HATAYI ÇÖZEN SATIR
+
+// Placeholder Component (Henüz yapılmayan sayfalar için)
+const ComingSoon = ({ title }: { title: string }) => (
+  <div className="p-10 text-center border-2 border-dashed border-gray-300 rounded-xl m-10">
+    <h2 className="text-2xl font-bold text-gray-400">{title}</h2>
+    <p className="text-gray-500 mt-2">Bu modül geliştirme aşamasındadır.</p>
+  </div>
+);
 
 // --- GÜVENLİK KORUMALARI (Route Guards) ---
 
@@ -49,6 +59,15 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          {/* KLİNİK PANELİ */}
+          <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="patients" element={<PatientList />} /> {/* GERÇEK SAYFA */}
+            <Route path="calendar" element={<ComingSoon title="Randevu Takvimi" />} />
+            <Route path="treatments" element={<ComingSoon title="Tedavi Yönetimi" />} />
+            <Route path="finance" element={<ComingSoon title="Finans ve Kasa" />} />
+            <Route path="staff" element={<ComingSoon title="Personel Yönetimi" />} />
+          </Route>
           {/* --- PUBLIC ALAN --- */}
           <Route path="/" element={<LandingPage />} />
           
