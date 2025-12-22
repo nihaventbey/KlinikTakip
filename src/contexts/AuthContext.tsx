@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from '../types';
@@ -7,8 +7,8 @@ interface AuthContextType {
   session: Session | null;
   user: Profile | null;
   loading: boolean;
-  isAdmin: boolean;      // Klinik Yöneticisi (ADMIN rolü)
-  isSuperAdmin: boolean; // SaaS Sahibi (SUPER_ADMIN rolü)
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -18,10 +18,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Gereksiz fetch işlemlerini önlemek için son işlenen user ID
+  const lastUserId = useRef<string | null>(null);
 
-  // Veritabanından detaylı kullanıcı profilini çek
   const fetchProfile = async (userId: string, email: string) => {
+    // Eğer zaten bu kullanıcının verisi yüklüyse ve state doluysa tekrar çekme
+    if (lastUserId.current === userId && user) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('Profil çekiliyor...', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -29,69 +38,101 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.error('Profil yüklenirken hata:', error);
-        // Profil yoksa bile session var olabilir, ama user null kalır.
+        console.error('Profil yüklenirken hata (Veritabanı):', error);
+        // Profil yoksa bile loading'i kapat ki sonsuz döngü olmasın
+        setLoading(false);
         return;
       }
 
-      // Rolleri güvenli bir şekilde al
       const roles = (data.roles || []) as UserRole[];
-
-      setUser({
+      
+      const newProfile = {
         id: data.id,
         clinic_id: data.clinic_id,
         tenant_id: data.tenant_id,
         full_name: data.full_name,
         email: email,
         roles: roles,
-        created_at: data.created_at
-      });
+        created_at: data.created_at,
+        is_active: data.is_active
+      };
+
+      setUser(newProfile);
+      lastUserId.current = userId;
+      console.log('Profil yüklendi:', newProfile.full_name);
 
     } catch (err) {
       console.error('Kritik Auth Hatası:', err);
     } finally {
+      // Her durumda loading kapatılmalı
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // 1. Sayfa yenilendiğinde oturumu kontrol et
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email!);
-      } else {
-        setLoading(false);
-      }
-    });
+    let mounted = true;
 
-    // 2. Login/Logout olaylarını dinle
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user) {
-        // Sadece user state boşsa yeniden çek (gereksiz fetch'i önle)
-        if (!user) {
-            setLoading(true);
-            fetchProfile(session.user.id, session.user.email!);
+    // 1. İlk Yükleme Kontrolü
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+
+        if (session) {
+          setSession(session);
+          // Kullanıcı varsa profilini çek
+          await fetchProfile(session.user.id, session.user.email!);
+        } else {
+          // Kullanıcı yoksa yüklemeyi bitir
+          setLoading(false);
         }
-      } else {
-        // Çıkış yapıldı
+      } catch (e) {
+        console.error("Auth Başlatma Hatası:", e);
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // 2. Auth Durum Dinleyicisi (Sekme değişimi, login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      console.log("Auth Olayı:", event);
+
+      if (event === 'SIGNED_OUT' || !session) {
+        setSession(null);
         setUser(null);
+        lastUserId.current = null;
         setLoading(false);
+      } 
+      else if (session) {
+        setSession(session);
+        // Kullanıcı değiştiyse veya profil henüz yüklenmediyse çek
+        if (session.user.id !== lastUserId.current) {
+           await fetchProfile(session.user.id, session.user.email!);
+        } else {
+           // Kullanıcı aynıysa yükleme ekranını kapat (Burası kritik, eksikse takılı kalır)
+           setLoading(false);
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    // Local storage temizliği gerekirse buraya eklenebilir
+    lastUserId.current = null;
+    setLoading(false);
   };
 
-  // Rol kontrolü (Helpers)
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') || false;
   const isAdmin = user?.roles.includes('ADMIN') || false;
 
