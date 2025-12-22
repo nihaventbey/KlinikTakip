@@ -1,34 +1,35 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { UserProfile, UserRole } from '../types';
+import { Session } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+interface AuthContextType {
+  session: Session | null;
+  user: UserProfile | null;
+  loading: boolean;
+  isSuperAdmin: boolean;
+  hasRole: (role: UserRole) => boolean;
+  signOut: () => Promise<void>;
+}
 
-const AuthContext = createContext();
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Mevcut oturumu kontrol et
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await fetchUserRole(session.user);
-      } else {
-        setLoading(false);
-      }
-    };
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id, session.user.email!);
+      else setLoading(false);
+    });
 
-    checkUser();
-
-    // 2. Oturum değişikliklerini dinle (Giriş/Çıkış)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await fetchUserRole(session.user);
-      } else {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id, session.user.email!);
+      else {
         setUser(null);
         setLoading(false);
       }
@@ -37,33 +38,52 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserRole = async (authUser) => {
+  const fetchProfile = async (userId: string, email: string) => {
     try {
-      // public.profiles tablosundan rolü çek
-      const { data: profile } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('role, full_name')
-        .eq('id', authUser.id)
+        .select('*')
+        .eq('id', userId)
         .single();
 
-      // Auth verisi ile profil verisini birleştir
+      if (error) throw error;
+
+      // Veritabanındaki text[] dizisini UserRole[] olarak algıla
+      const roles = (data.roles || []) as UserRole[];
+      const isSuperAdmin = roles.includes('SUPER_ADMIN');
+
       setUser({
-        ...authUser,
-        role: profile?.role || 'PATIENT', // Varsayılan rol
-        name: profile?.full_name || authUser.email
+        id: userId,
+        email,
+        full_name: data.full_name || email,
+        roles: roles,
+        clinic_id: data.clinic_id,
+        tenant_id: data.tenant_id,
+        is_super_admin: isSuperAdmin,
       });
-    } catch (error) {
-      console.error('Rol çekme hatası:', error);
+    } catch (err) {
+      console.error('Profil yüklenirken hata:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const hasRole = (role: UserRole) => user?.roles.includes(role) || false;
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, supabase }}>
+    <AuthContext.Provider value={{ session, user, loading, isSuperAdmin: user?.is_super_admin || false, hasRole, signOut }}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+};

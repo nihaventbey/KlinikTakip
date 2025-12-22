@@ -1,4 +1,4 @@
-import { NavItem, Doctor, Task, Patient } from './types';
+import { NavItem, Doctor, Task, Patient } from './src/types';
 
 export const APP_NAME = "DentCare";
 
