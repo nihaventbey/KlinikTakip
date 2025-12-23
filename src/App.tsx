@@ -8,16 +8,16 @@ import ClinicLogin from './pages/auth/ClinicLogin';
 import SuperLogin from './pages/auth/SuperLogin';
 import Dashboard from './pages/admin/Dashboard';
 import SuperDashboard from './pages/superadmin/Dashboard';
+import PatientList from './pages/admin/patients/PatientList';
+import PatientDetail from './pages/admin/patients/PatientDetail'; // Yeni eklendi
 
 // Layouts
 import AdminLayout from './layouts/AdminLayout';
-import PatientList from './pages/admin/patients/PatientList';
-import Dashboard from './pages/admin/Dashboard';
-import SuperAdminLayout from './layouts/SuperAdminLayout'; // <-- HATAYI ÇÖZEN SATIR
+import SuperAdminLayout from './layouts/SuperAdminLayout';
 
 // Placeholder Component (Henüz yapılmayan sayfalar için)
 const ComingSoon = ({ title }: { title: string }) => (
-  <div className="p-10 text-center border-2 border-dashed border-gray-300 rounded-xl m-10">
+  <div className="p-10 text-center border-2 border-dashed border-gray-300 rounded-xl m-4 lg:m-10">
     <h2 className="text-2xl font-bold text-gray-400">{title}</h2>
     <p className="text-gray-500 mt-2">Bu modül geliştirme aşamasındadır.</p>
   </div>
@@ -43,12 +43,12 @@ const SuperAdminRoute = ({ children }: { children: JSX.Element }) => {
 
 // 3. Zaten giriş yapmışsa Login sayfasına sokma, panele at
 const PublicOnlyRoute = ({ children, type }: { children: JSX.Element, type: 'admin' | 'super' }) => {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, loading } = useAuth();
   
+  if(loading) return <div className="flex h-screen items-center justify-center">Yönlendiriliyor...</div>;
+
   if (user) {
-    // Eğer süper adminse ve sys-login'e geldiyse -> sys-admin'e at
     if (isSuperAdmin && type === 'super') return <Navigate to="/sys-admin" replace />;
-    // Eğer normalse ve login'e geldiyse -> admin'e at
     if (!isSuperAdmin && type === 'admin') return <Navigate to="/admin" replace />;
   }
   return children;
@@ -59,40 +59,28 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* KLİNİK PANELİ */}
-          <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="patients" element={<PatientList />} /> {/* GERÇEK SAYFA */}
-            <Route path="calendar" element={<ComingSoon title="Randevu Takvimi" />} />
-            <Route path="treatments" element={<ComingSoon title="Tedavi Yönetimi" />} />
-            <Route path="finance" element={<ComingSoon title="Finans ve Kasa" />} />
-            <Route path="staff" element={<ComingSoon title="Personel Yönetimi" />} />
-          </Route>
           {/* --- PUBLIC ALAN --- */}
           <Route path="/" element={<LandingPage />} />
-          
-          <Route path="/login" element={
-            <PublicOnlyRoute type="admin"><ClinicLogin /></PublicOnlyRoute>
-          } />
-          
-          <Route path="/sys-login" element={
-            <PublicOnlyRoute type="super"><SuperLogin /></PublicOnlyRoute>
-          } />
+          <Route path="/login" element={<PublicOnlyRoute type="admin"><ClinicLogin /></PublicOnlyRoute>} />
+          <Route path="/sys-login" element={<PublicOnlyRoute type="super"><SuperLogin /></PublicOnlyRoute>} />
 
           {/* --- KLİNİK PANELİ (Korumalı) --- */}
           <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
-            {/* İleride eklenecekler: */}
-            <Route path="patients" element={<div>Hasta Listesi (Yapılacak)</div>} />
-            <Route path="appointments" element={<div>Randevu Takvimi (Yapılacak)</div>} />
-            <Route path="settings" element={<div>Ayarlar (Yapılacak)</div>} />
+            <Route path="patients" element={<PatientList />} />
+            <Route path="patients/:patientId" element={<PatientDetail />} /> 
+            <Route path="calendar" element={<ComingSoon title="Randevu Takvimi" />} />
+            <Route path="treatments" element={<ComingSoon title="Tedavi Yönetimi" />} />
+            <Route path="finance" element={<ComingSoon title="Finans ve Kasa" />} />
+            <Route path="staff" element={<ComingSoon title="Personel Yönetimi" />} />
+            <Route path="settings" element={<ComingSoon title="Ayarlar" />} />
           </Route>
 
-          {/* --- SAAS YÖNETİM PANELİ (Çok Gizli) --- */}
+          {/* --- SAAS YÖNETİM PANELİ (Süper Admin) --- */}
           <Route path="/sys-admin" element={<SuperAdminRoute><SuperAdminLayout /></SuperAdminRoute>}>
             <Route index element={<SuperDashboard />} />
-            <Route path="tenants" element={<div>Klinik Yönetimi (Yapılacak)</div>} />
-            <Route path="plans" element={<div>Paket Ayarları (Yapılacak)</div>} />
+            <Route path="tenants" element={<ComingSoon title="Klinik Yönetimi" />} />
+            <Route path="plans" element={<ComingSoon title="Paket Ayarları" />} />
           </Route>
 
           {/* Hatalı URL yakalayıcı */}

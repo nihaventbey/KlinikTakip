@@ -29,15 +29,17 @@ export interface Patient {
   id: string;
   clinic_id: string;
   full_name: string;
-  identity_number?: string; // TC No
+  identity_number?: string;
+  tc_number?: string; // Eklendi
   phone: string;
   email?: string;
-  birth_date?: string;
-  gender?: 'male' | 'female' | 'other';
+  birth_date: string; // Zorunlu yapıldı
+  gender: 'male' | 'female' | 'other'; // Zorunlu yapıldı
   address?: string;
   blood_type?: string;
   notes?: string;
   created_at: string;
+  balance: number; // Bakiye eklendi
 }
 
 // --- RANDEVU MODÜLÜ ---
@@ -46,11 +48,12 @@ export interface Appointment {
   clinic_id: string;
   patient_id: string;
   doctor_id: string;
-  patient?: Patient; // Join ile gelecek
-  doctor?: Profile;  // Join ile gelecek
+  patient?: Patient; 
+  staff: { full_name: string }; // doctor, staff ile değiştirildi ve tipi daraltıldı
   start_time: string;
   end_time: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+  title?: string; // Başlık eklendi
   type?: 'examination' | 'treatment' | 'control';
   notes?: string;
 }
