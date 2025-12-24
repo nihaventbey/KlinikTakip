@@ -1,80 +1,86 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabase';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { db } from '../../../lib/db';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { Patient } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import Modal from '../../../components/ui/Modal';
 import AddPatientForm from './AddPatientForm';
-import { Archive } from 'lucide-react'; // Archive ikonunu import et
+import { Archive, Plus, ArchiveIcon } from 'lucide-react';
 
 export default function PatientList() {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const navigate = useNavigate();
+  const { user: profile } = useAuth();
+  const queryClient = useQueryClient();
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const fetchPatients = async () => {
-    setLoading(true);
-    let query = supabase
-      .from('patients')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+  const queryKey = ['patients', profile?.clinic_id, debouncedSearchTerm];
 
-    if (search) {
-      query = query.ilike('full_name', `%${search}%`);
+  const { data: patients, isLoading, isError, error } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!profile?.clinic_id) return [];
+      if (debouncedSearchTerm) {
+        return db.patients.search(debouncedSearchTerm, profile.clinic_id);
+      }
+      return db.patients.getAll(profile.clinic_id);
+    },
+    enabled: !!profile?.clinic_id,
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (patientId: string) => db.patients.update(patientId, { deleted_at: new Date().toISOString() }),
+    onSuccess: () => {
+      toast.success('Hasta başarıyla arşivlendi.');
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+    },
+    onError: (err: any) => {
+      toast.error('Hasta arşivlenirken bir hata oluştu: ' + err.message);
     }
+  });
 
-    const { data, error } = await query;
-    if (error) console.error('Hata:', error);
-    else setPatients(data || []);
-    
-    setLoading(false);
+  const handleArchiveClick = (e: React.MouseEvent, patient: Patient) => {
+    e.stopPropagation();
+    if (window.confirm(`${patient.full_name} adlı hastayı arşivlemek istediğinizden emin misiniz?`)) {
+      archiveMutation.mutate(patient.id);
+    }
   };
-
-  useEffect(() => {
-    fetchPatients();
-  }, [search]);
 
   const handleSuccess = () => {
     setIsModalOpen(false);
-    fetchPatients();
   };
 
   const handleRowClick = (patientId: string) => {
     navigate(`/admin/patients/${patientId}`);
   };
 
-  const handleArchiveClick = async (e: React.MouseEvent, patient: Patient) => {
-    e.stopPropagation(); // Satırın tıklama olayını engelle
-    if (window.confirm(`${patient.full_name} adlı hastayı arşivlemek istediğinizden emin misiniz?`)) {
-      const { error } = await supabase
-        .from('patients')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', patient.id);
-      
-      if (error) {
-        alert('Hasta arşivlenirken bir hata oluştu: ' + error.message);
-      } else {
-        fetchPatients(); // Listeyi yenile
-      }
-    }
-  };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Aktif Hastalar</h1>
-        <Button onClick={() => setIsModalOpen(true)}>+ Yeni Hasta Ekle</Button>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-800">Aktif Hastalar</h1>
+          <Link to="/admin/patients/archived" className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors">
+            <ArchiveIcon size={16} className="mr-1.5" />
+            Arşivi Görüntüle
+          </Link>
+        </div>
+        <Button onClick={() => setIsModalOpen(true)}>
+          <Plus size={18} className="mr-2" />
+          Yeni Hasta Ekle
+        </Button>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 border">
         <Input 
-          placeholder="İsim veya TC No ile ara..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          placeholder="İsim, TC No veya GSM ile ara..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-md"
         />
       </div>
@@ -91,12 +97,14 @@ export default function PatientList() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
+            {isLoading ? (
               <tr><td colSpan={5} className="p-8 text-center text-gray-500">Yükleniyor...</td></tr>
-            ) : patients.length === 0 ? (
+            ) : isError ? (
+              <tr><td colSpan={5} className="p-8 text-center text-red-500">Hata: {error.message}</td></tr>
+            ) : patients?.length === 0 ? (
               <tr><td colSpan={5} className="p-8 text-center text-gray-500">Aktif hasta bulunamadı.</td></tr>
             ) : (
-              patients.map((patient) => (
+              patients?.map((patient) => (
                 <tr 
                   key={patient.id} 
                   className="hover:bg-gray-50 transition cursor-pointer"
@@ -124,6 +132,7 @@ export default function PatientList() {
                       onClick={(e) => handleArchiveClick(e, patient)}
                       className="text-gray-400 hover:text-red-600 p-2 rounded-full transition"
                       title="Hastayı Arşivle"
+                      disabled={archiveMutation.isPending}
                     >
                       <Archive className="h-4 w-4" />
                     </button>
@@ -139,6 +148,7 @@ export default function PatientList() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         title="Yeni Hasta Kaydı"
+        size="xl"
       >
         <AddPatientForm onSuccess={handleSuccess} onCancel={() => setIsModalOpen(false)} />
       </Modal>

@@ -1,37 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import React, { useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import toast from 'react-hot-toast';
+import { db } from '../../../lib/db';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
 import { Patient } from '../../../types';
+import { FormInput } from '../../../components/ui/FormInput';
+import { FormSelect } from '../../../components/ui/FormSelect';
+import { FormTextarea } from '../../../components/ui/FormTextarea';
+
+// TCKN validation function (simple checksum)
+const isValidTcNumber = (tc: string) => {
+  if (!/^[1-9][0-9]{10}$/.test(tc)) return false;
+  const digits = tc.split('').map(Number);
+  const tenth = ((digits[0] + digits[2] + digits[4] + digits[6] + digits[8]) * 7 - (digits[1] + digits[3] + digits[5] + digits[7])) % 10;
+  if (digits[9] !== tenth) return false;
+  const eleventh = (digits.slice(0, 10).reduce((a, b) => a + b, 0)) % 10;
+  return digits[10] === eleventh;
+};
+
+const patientSchema = z.object({
+  full_name: z.string().min(3, "Ad soyad en az 3 karakter olmalıdır."),
+  phone: z.string().min(10, "Geçerli bir telefon numarası giriniz."),
+  email: z.string().email("Geçersiz e-posta adresi.").optional().or(z.literal('')),
+  tc_number: z.string().length(11, "TC Kimlik No 11 haneli olmalıdır.").refine(isValidTcNumber, "Geçersiz TC Kimlik No.").optional().or(z.literal('')),
+  birth_date: z.string().optional(),
+  gender: z.enum(['male', 'female', 'other']),
+  address: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+type PatientFormData = z.infer<typeof patientSchema>;
 
 interface AddPatientFormProps {
   onSuccess: () => void;
   onCancel: () => void;
-  initialData?: Patient | null; // Düzenleme için başlangıç verisi
+  initialData?: Patient | null;
 }
 
 export default function AddPatientForm({ onSuccess, onCancel, initialData }: AddPatientFormProps) {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  const [formData, setFormData] = useState({
-    full_name: '',
-    tc_number: '',
-    phone: '',
-    email: '',
-    birth_date: '',
-    gender: 'other' as 'male' | 'female' | 'other',
-    address: '',
-    notes: ''
-  });
-
+  const { user: profile } = useAuth();
+  const queryClient = useQueryClient();
   const isEditMode = !!initialData;
+
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<PatientFormData>({
+    resolver: zodResolver(patientSchema),
+    defaultValues: {
+      full_name: '',
+      tc_number: '',
+      phone: '',
+      email: '',
+      birth_date: '',
+      gender: 'other',
+      address: '',
+      notes: ''
+    }
+  });
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      setFormData({
+      reset({
         full_name: initialData.full_name || '',
         tc_number: initialData.tc_number || '',
         phone: initialData.phone || '',
@@ -39,94 +70,69 @@ export default function AddPatientForm({ onSuccess, onCancel, initialData }: Add
         birth_date: initialData.birth_date ? new Date(initialData.birth_date).toISOString().split('T')[0] : '',
         gender: initialData.gender || 'other',
         address: initialData.address || '',
-        notes: initialData.notes || ''
+        notes: initialData.notes || '',
       });
     }
-  }, [initialData, isEditMode]);
+  }, [initialData, isEditMode, reset]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const mutation = useMutation({
+    mutationFn: (formData: PatientFormData) => {
+        const submissionData = {
+            ...formData,
+            email: formData.email || null,
+            birth_date: formData.birth_date || null,
+            tc_number: formData.tc_number || null,
+        };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      let query;
-      const submissionData = {
-        clinic_id: user?.clinic_id,
-        ...formData,
-        email: formData.email || null,
-        birth_date: formData.birth_date || null,
-        tc_number: formData.tc_number || null,
-      };
-
-      if (isEditMode) {
-        // Güncelleme
-        query = supabase.from('patients').update(submissionData).eq('id', initialData.id);
+      if (isEditMode && initialData) {
+        return db.patients.update(initialData.id, submissionData);
       } else {
-        // Ekleme
-        query = supabase.from('patients').insert([submissionData]);
+        if (!profile?.clinic_id) throw new Error("Klinik bilgisi bulunamadı.");
+        return db.patients.add(submissionData, profile.clinic_id);
       }
-
-      const { error } = await query;
-
-      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(`Hasta başarıyla ${isEditMode ? 'güncellendi' : 'kaydedildi'}.`);
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      if (isEditMode && initialData) {
+        queryClient.invalidateQueries({ queryKey: ['patient', initialData.id] });
+      }
       onSuccess();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || `Kayıt ${isEditMode ? 'güncellenirken' : 'oluşturulurken'} bir hata oluştu.`);
-    } finally {
-      setLoading(false);
+    },
+    onError: (error) => {
+        toast.error(error instanceof Error ? error.message : 'Bir hata oluştu.');
     }
+  });
+
+  const onSubmit = (data: PatientFormData) => {
+    mutation.mutate(data);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <div className="text-red-600 text-sm bg-red-50 p-2 rounded">{error}</div>}
-      
-      <Input label="Ad Soyad *" name="full_name" required value={formData.full_name} onChange={handleChange} />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <FormInput<PatientFormData> label="Ad Soyad *" name="full_name" register={register} error={errors.full_name} />
       
       <div className="grid grid-cols-2 gap-4">
-        <Input label="TC Kimlik No" name="tc_number" maxLength={11} value={formData.tc_number} onChange={handleChange} />
-        <Input label="Telefon *" name="phone" required type="tel" value={formData.phone} onChange={handleChange} />
+        <FormInput<PatientFormData> label="TC Kimlik No" name="tc_number" maxLength={11} register={register} error={errors.tc_number} />
+        <FormInput<PatientFormData> label="Telefon *" name="phone" type="tel" register={register} error={errors.phone} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Doğum Tarihi" name="birth_date" type="date" value={formData.birth_date} onChange={handleChange} />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cinsiyet</label>
-          <select 
-            name="gender" 
-            value={formData.gender} 
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-          >
+        <FormInput<PatientFormData> label="Doğum Tarihi" name="birth_date" type="date" register={register} error={errors.birth_date} />
+        <FormSelect<PatientFormData> label="Cinsiyet" name="gender" register={register} error={errors.gender}>
             <option value="male">Erkek</option>
             <option value="female">Kadın</option>
             <option value="other">Diğer</option>
-          </select>
-        </div>
+        </FormSelect>
       </div>
 
-      <Input label="E-posta" name="email" type="email" value={formData.email} onChange={handleChange} />
+      <FormInput<PatientFormData> label="E-posta" name="email" type="email" register={register} error={errors.email} />
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-        <textarea 
-          name="address" 
-          rows={2} 
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-          value={formData.address || ''}
-          onChange={handleChange}
-        />
-      </div>
+      <FormTextarea<PatientFormData> label="Adres" name="address" rows={2} register={register} error={errors.address} />
 
       <div className="flex justify-end gap-3 mt-6">
-        <Button type="button" variant="secondary" onClick={onCancel}>İptal</Button>
-        <Button type="submit" isLoading={loading}>{isEditMode ? 'Güncelle' : 'Kaydet'}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel} disabled={mutation.isPending}>İptal</Button>
+        <Button type="submit" isLoading={mutation.isPending}>{isEditMode ? 'Güncelle' : 'Kaydet'}</Button>
       </div>
     </form>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Sayfalar
@@ -9,7 +10,11 @@ import SuperLogin from './pages/auth/SuperLogin';
 import Dashboard from './pages/admin/Dashboard';
 import SuperDashboard from './pages/superadmin/Dashboard';
 import PatientList from './pages/admin/patients/PatientList';
-import PatientDetail from './pages/admin/patients/PatientDetail'; // Yeni eklendi
+import PatientDetail from './pages/admin/patients/PatientDetail';
+import ArchivedPatientList from './pages/admin/patients/ArchivedPatientList';
+import CalendarPage from './pages/admin/CalendarPage';
+import TreatmentListPage from './pages/admin/treatments/TreatmentListPage';
+import FinancePage from './pages/admin/finance/FinancePage';
 
 // Layouts
 import AdminLayout from './layouts/AdminLayout';
@@ -57,6 +62,7 @@ const PublicOnlyRoute = ({ children, type }: { children: JSX.Element, type: 'adm
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" reverseOrder={false} />
       <Router>
         <Routes>
           {/* --- PUBLIC ALAN --- */}
@@ -69,9 +75,10 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="patients" element={<PatientList />} />
             <Route path="patients/:patientId" element={<PatientDetail />} /> 
-            <Route path="calendar" element={<ComingSoon title="Randevu Takvimi" />} />
-            <Route path="treatments" element={<ComingSoon title="Tedavi Yönetimi" />} />
-            <Route path="finance" element={<ComingSoon title="Finans ve Kasa" />} />
+            <Route path="patients/archived" element={<ArchivedPatientList />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="treatments" element={<TreatmentListPage />} />
+            <Route path="finance" element={<FinancePage />} />
             <Route path="staff" element={<ComingSoon title="Personel Yönetimi" />} />
             <Route path="settings" element={<ComingSoon title="Ayarlar" />} />
           </Route>

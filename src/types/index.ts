@@ -79,4 +79,5 @@ export interface Treatment {
   price: number;
   duration_minutes: number;
   category?: string;
+  description?: string;
 }

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Profile, UserRole } from '../types';
@@ -18,119 +18,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Gereksiz fetch işlemlerini önlemek için son işlenen user ID
-  const lastUserId = useRef<string | null>(null);
 
-  const fetchProfile = async (userId: string, email: string) => {
-    // Eğer zaten bu kullanıcının verisi yüklüyse ve state doluysa tekrar çekme
-    if (lastUserId.current === userId && user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('Profil çekiliyor...', userId);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Profil yüklenirken hata (Veritabanı):', error);
-        // Profil yoksa bile loading'i kapat ki sonsuz döngü olmasın
-        setLoading(false);
-        return;
-      }
-
-      const roles = (data.roles || []) as UserRole[];
-      
-      const newProfile = {
-        id: data.id,
-        clinic_id: data.clinic_id,
-        tenant_id: data.tenant_id,
-        full_name: data.full_name,
-        email: email,
-        roles: roles,
-        created_at: data.created_at,
-        is_active: data.is_active
-      };
-
-      setUser(newProfile);
-      lastUserId.current = userId;
-      console.log('Profil yüklendi:', newProfile.full_name);
-
-    } catch (err) {
-      console.error('Kritik Auth Hatası:', err);
-    } finally {
-      // Her durumda loading kapatılmalı
-      setLoading(false);
-    }
-  };
-
+  // Effect 1: Handle session changes from Supabase
   useEffect(() => {
-    let mounted = true;
+    // On initial load, get the session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      // Set loading to false only after the initial session is fetched.
+      // The profile fetching will be handled by the next effect.
+      setLoading(false);
+    });
 
-    // 1. İlk Yükleme Kontrolü
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (session) {
-          setSession(session);
-          // Kullanıcı varsa profilini çek
-          await fetchProfile(session.user.id, session.user.email!);
-        } else {
-          // Kullanıcı yoksa yüklemeyi bitir
-          setLoading(false);
-        }
-      } catch (e) {
-        console.error("Auth Başlatma Hatası:", e);
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    // 2. Auth Durum Dinleyicisi (Sekme değişimi, login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      
-      console.log("Auth Olayı:", event);
-
-      if (event === 'SIGNED_OUT' || !session) {
-        setSession(null);
-        setUser(null);
-        lastUserId.current = null;
-        setLoading(false);
-      } 
-      else if (session) {
-        setSession(session);
-        // Kullanıcı değiştiyse veya profil henüz yüklenmediyse çek
-        if (session.user.id !== lastUserId.current) {
-           await fetchProfile(session.user.id, session.user.email!);
-        } else {
-           // Kullanıcı aynıysa yükleme ekranını kapat (Burası kritik, eksikse takılı kalır)
-           setLoading(false);
-        }
-      }
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
+  // Effect 2: React to session changes to fetch profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (session) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) {
+            console.error('Error loading profile:', error);
+            setUser(null);
+          } else if (data) {
+            const newProfile: Profile = {
+              id: data.id,
+              clinic_id: data.clinic_id,
+              tenant_id: data.tenant_id,
+              full_name: data.full_name,
+              email: session.user.email!,
+              roles: (data.roles || []) as UserRole[],
+              created_at: data.created_at,
+              is_active: data.is_active
+            };
+            setUser(newProfile);
+          }
+        } catch (e) {
+          console.error('A critical error occurred while fetching profile:', e);
+          setUser(null);
+        }
+      } else {
+        // If there is no session, ensure user is null
+        setUser(null);
+      }
+    };
+
+    fetchProfile();
+  }, [session]); // This effect runs whenever the session state changes
+
   const signOut = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    lastUserId.current = null;
-    setLoading(false);
   };
 
   const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') || false;
@@ -144,8 +94,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isSuperAdmin,
     signOut,
   };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  
+  // Render children only when loading is false. This prevents rendering protected
+  // routes with an incomplete auth state during the initial load.
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
