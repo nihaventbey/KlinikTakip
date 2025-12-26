@@ -13,7 +13,7 @@ import { Button } from '../../../components/ui/Button';
 import { Transaction } from '../../../types';
 
 const transactionSchema = z.object({
-  patient_id: z.string().min(1, "Hasta seçimi zorunludur."),
+  patient_id: z.string().optional(),
   amount: z.preprocess(
     (a) => parseFloat(z.string().parse(a)),
     z.number().refine(n => n !== 0, "Tutar 0 olamaz.")
@@ -21,6 +21,14 @@ const transactionSchema = z.object({
   transaction_date: z.string().min(1, "Tarih zorunludur."),
   type: z.enum(['Payment', 'Charge', 'Refund', 'Expense']),
   description: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type !== 'Expense' && (!data.patient_id || data.patient_id === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Hasta seçimi zorunludur.",
+      path: ['patient_id'],
+    });
+  }
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -41,17 +49,23 @@ export default function TransactionForm({ initialData, onClose }: TransactionFor
     enabled: !!profile?.clinic_id,
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<TransactionFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      type: 'Payment'
+      type: 'Payment',
+      patient_id: '',
     }
   });
 
+  const transactionType = watch('type');
+
   useEffect(() => {
     if (initialData) {
+      const formType = initialData.type === 'income' ? 'Payment' : 'Charge';
       reset({
         ...initialData,
+        // @ts-ignore
+        type: formType, 
         transaction_date: new Date(initialData.transaction_date).toISOString().split('T')[0],
       });
     } else {
@@ -67,18 +81,32 @@ export default function TransactionForm({ initialData, onClose }: TransactionFor
 
   const mutation = useMutation({
     mutationFn: (data: TransactionFormData) => {
-      const submissionData = { ...data, amount: data.type === 'Payment' || data.type === 'Refund' ? -Math.abs(data.amount) : Math.abs(data.amount) };
+      // This logic is based on how the db.ts `add` function updates the balance.
+      const amount = ['Payment', 'Refund'].includes(data.type) ? -Math.abs(data.amount) : Math.abs(data.amount);
+      const dbType = data.type === 'Payment' ? 'income' : 'expense';
+
+      const finalDataForDb = {
+        patient_id: data.type === 'Expense' ? null : data.patient_id,
+        amount: amount,
+        transaction_date: data.transaction_date,
+        type: dbType,
+        description: data.description,
+      };
+      
       if (isEditMode) {
         // Note: Update doesn't handle balance recalculation in this simplified version.
-        return db.transactions.update(initialData!.id, submissionData);
+        // The logic for edit would be more complex, we focus on fixing the add.
+        return db.transactions.update(initialData!.id, finalDataForDb);
       }
-      return db.transactions.add(submissionData, profile!.clinic_id!);
+      return db.transactions.add(finalDataForDb, profile!.clinic_id!);
     },
     onSuccess: (_, variables) => {
       toast.success(`İşlem başarıyla ${isEditMode ? 'güncellendi' : 'kaydedildi'}.`);
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-      queryClient.invalidateQueries({ queryKey: ['patient', variables.patient_id] });
+      if (variables.patient_id) {
+        queryClient.invalidateQueries({ queryKey: ['patient', variables.patient_id] });
+      }
       onClose();
     },
     onError: (error) => {
@@ -92,15 +120,17 @@ export default function TransactionForm({ initialData, onClose }: TransactionFor
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <FormSelect<TransactionFormData>
-        label="Hasta"
-        name="patient_id"
-        register={register}
-        error={errors.patient_id}
-      >
-        <option value="">Hasta Seçiniz</option>
-        {patients?.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-      </FormSelect>
+      {transactionType !== 'Expense' && (
+        <FormSelect<TransactionFormData>
+          label="Hasta"
+          name="patient_id"
+          register={register}
+          error={errors.patient_id}
+        >
+          <option value="">Hasta Seçiniz</option>
+          {patients?.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+        </FormSelect>
+      )}
 
       <FormInput<TransactionFormData> label="Tutar (₺)" name="amount" type="number" step="0.01" register={register} error={errors.amount} />
       

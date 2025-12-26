@@ -12,7 +12,7 @@ interface MedicalHistoryProps {
 }
 
 // --- Tag Input Component for JSONB arrays ---
-const TagInput = ({ value = [], onChange, placeholder }: { value: string[], onChange: (tags: string[]) => void, placeholder: string }) => {
+const TagInput = React.forwardRef<HTMLInputElement, { value?: string[], onChange: (tags: string[]) => void, placeholder: string }>(({ value = [], onChange, placeholder }, ref) => {
     const [inputValue, setInputValue] = useState('');
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -42,6 +42,7 @@ const TagInput = ({ value = [], onChange, placeholder }: { value: string[], onCh
                 ))}
             </div>
             <input
+                ref={ref}
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
@@ -51,7 +52,7 @@ const TagInput = ({ value = [], onChange, placeholder }: { value: string[], onCh
             />
         </div>
     );
-};
+});
 
 
 // --- Main Medical History Form Component ---

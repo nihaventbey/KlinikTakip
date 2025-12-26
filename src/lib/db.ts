@@ -11,7 +11,7 @@ export const db = {
         .from('clinics')
         .select('*, clinic_settings(*)') // İlişkiyi tablo adıyla direkt belirt
         .eq('id', clinicId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('db.settings.get error:', error);
@@ -30,6 +30,7 @@ export const db = {
     },
     update: async (clinicId: string, data: Partial<ClinicWithSettings>) => {
       const { settings, ...clinicInfo } = data;
+      console.log('Updating settings for clinicId:', clinicId);
 
       // 1. 'clinics' tablosunu (temel bilgiler) güncelle
       if (Object.keys(clinicInfo).length > 0) {
@@ -44,8 +45,11 @@ export const db = {
       if (settings && Object.keys(settings).length > 0) {
         const { error } = await supabase
           .from('clinic_settings')
-          .upsert({ ...settings, clinic_id: clinicId });
-        if (error) throw error;
+          .upsert({ ...settings, clinic_id: clinicId }, { onConflict: 'clinic_id' });
+        if (error) {
+            console.error('Error upserting clinic_settings:', error);
+            throw error;
+        }
       }
 
       // 3. Güncellenmiş veriyi birleşik olarak yeniden çek ve döndür
@@ -95,6 +99,81 @@ export const db = {
         activePatients: activePatients || 0,
         pendingPayments: totalPending,
       };
+    },
+    getMonthlyStats: async (clinicId: string) => {
+      const today = new Date();
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('clinic_id', clinicId)
+        .eq('type', 'income')
+        .gte('transaction_date', firstDayOfMonth);
+
+      if (revenueError) throw revenueError;
+      const monthlyRevenue = Math.abs(revenueData.reduce((sum, { amount }) => sum + amount, 0));
+
+      const { count: newPatients, error: patientsError } = await supabase
+        .from('patients')
+        .select('*', { count: 'exact', head: true })
+        .eq('clinic_id', clinicId)
+        .is('deleted_at', null)
+        .gte('created_at', firstDayOfMonth);
+      
+      if (patientsError) throw patientsError;
+
+      return { monthlyRevenue, newPatients: newPatients || 0 };
+    },
+    getUpcomingAppointments: async (clinicId: string) => {
+        const now = new Date().toISOString();
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+        const endOfDayISO = endOfDay.toISOString();
+
+        const { data, error } = await supabase
+            .from('appointments')
+            .select('id, start_time, end_time, patient:patients(full_name)')
+            .eq('clinic_id', clinicId)
+            .gte('start_time', now)
+            .lte('start_time', endOfDayISO)
+            .order('start_time', { ascending: true })
+            .limit(5);
+
+        if (error) throw error;
+        return data;
+    },
+    getWeeklyAppointmentStats: async (clinicId: string) => {
+        const today = new Date();
+        const weeklyData: { week: string; count: number }[] = [];
+
+        for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date();
+            // This logic calculates the start of the week (Monday)
+            weekStart.setDate(today.getDate() - (i * 7) - (today.getDay() + 6) % 7);
+            weekStart.setHours(0, 0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            
+            const { count, error } = await supabase
+                .from('appointments')
+                .select('*', { count: 'exact', head: true })
+                .eq('clinic_id', clinicId)
+                .gte('start_time', weekStart.toISOString())
+                .lte('start_time', weekEnd.toISOString());
+
+            if (error) throw error;
+            
+            let weekLabel = "";
+            if (i === 0) weekLabel = "Bu Hafta";
+            else if (i === 1) weekLabel = "Geçen Hafta";
+            else weekLabel = `${i} Hafta Önce`;
+
+            weeklyData.push({ week: weekLabel, count: count || 0 });
+        }
+        return weeklyData;
     }
   },
 
@@ -194,6 +273,36 @@ export const db = {
       
       if (error) throw error;
       return data as Patient[];
+    },
+    checkTcNumberExists: async (tcNumber: string, clinicId: string, patientId?: string) => {
+        let query = supabase
+            .from('patients')
+            .select('id', { count: 'exact' })
+            .eq('clinic_id', clinicId)
+            .eq('tc_number', tcNumber);
+
+        if (patientId) {
+            query = query.not('id', 'eq', patientId);
+        }
+
+        const { count, error } = await query;
+        if (error) throw error;
+        return (count || 0) > 0;
+    },
+    checkPhoneExists: async (phone: string, clinicId: string, patientId?: string) => {
+        let query = supabase
+            .from('patients')
+            .select('id', { count: 'exact' })
+            .eq('clinic_id', clinicId)
+            .eq('phone', phone);
+
+        if (patientId) {
+            query = query.not('id', 'eq', patientId);
+        }
+
+        const { count, error } = await query;
+        if (error) throw error;
+        return (count || 0) > 0;
     }
   },
 
@@ -206,6 +315,32 @@ export const db = {
       
       if (error) throw error;
       return data;
+    },
+    add: async (staffData: any, clinicId: string) => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .insert([{ ...staffData, clinic_id: clinicId }])
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    update: async (id: string, updates: any) => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    remove: async (id: string) => {
+        const { error } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
     }
   },
 
@@ -290,19 +425,26 @@ export const db = {
 
         if (trxError) throw trxError;
 
-        // Update patient balance
-        const { data: patient, error: patientError } = await supabase
-            .from('patients')
-            .select('balance')
-            .eq('id', trx.patient_id)
-            .single();
-        
-        if (patientError) throw patientError;
+        // Only update patient balance if a patient is associated with the transaction
+        if (trx.patient_id) {
+            // Update patient balance
+            const { data: patient, error: patientError } = await supabase
+                .from('patients')
+                .select('balance')
+                .eq('id', trx.patient_id)
+                .single();
+            
+            if (patientError) {
+                // If the patient is not found, we might not want to throw an error,
+                // but we should log it. However, the form logic should prevent this.
+                throw patientError;
+            }
 
-        const newBalance = (patient.balance || 0) + trx.amount;
-        const { error: updateError } = await db.patients.update(trx.patient_id, { balance: newBalance });
+            const newBalance = (patient.balance || 0) + trx.amount;
+            const { error: updateError } = await db.patients.update(trx.patient_id, { balance: newBalance });
 
-        if (updateError) throw updateError;
+            if (updateError) throw updateError;
+        }
         
         return trxData;
     },
@@ -463,6 +605,38 @@ export const db = {
       return data;
     }
   },
+  
+  treatment_templates: {
+    getAll: async () => {
+      const { data, error } = await supabase
+        .from('treatment_templates')
+        .select('*')
+        .is('deleted_at', null);
+      if (error) throw error;
+      return data;
+    }
+  },
+
+  treatment_plans: {
+    getByPatientId: async (patientId: string) => {
+      const { data, error } = await supabase
+        .from('treatment_plans')
+        .select('*, treatment:treatment_templates(name)')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    create: async (plan: any) => {
+      const { data, error } = await supabase
+        .from('treatment_plans')
+        .insert(plan)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+  },
 
   patient_files: {
     getByPatientId: async (patientId: string) => {
@@ -483,6 +657,33 @@ export const db = {
             .single();
         if (error) throw error;
         return data;
+    }
+  },
+
+  holidays: {
+    getAllByClinicId: async (clinicId: string) => {
+        const { data, error } = await supabase
+            .from('holidays')
+            .select('*')
+            .eq('clinic_id', clinicId);
+        if (error) throw error;
+        return data;
+    },
+    add: async (holiday: { clinic_id: string; date: string; name: string }) => {
+        const { data, error } = await supabase
+            .from('holidays')
+            .insert(holiday)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    },
+    remove: async (id: string) => {
+        const { error } = await supabase
+            .from('holidays')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
     }
   }
 };

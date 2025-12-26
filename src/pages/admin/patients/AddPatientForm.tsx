@@ -104,35 +104,58 @@ export default function AddPatientForm({ onSuccess, onCancel, initialData }: Add
     }
   });
 
-  const onSubmit = (data: PatientFormData) => {
+  const onSubmit = async (data: PatientFormData) => {
+    if (!profile?.clinic_id) {
+        toast.error("Klinik bilgisi bulunamadı.");
+        return;
+    }
+
+    if (data.tc_number) {
+        const tcExists = await db.patients.checkTcNumberExists(data.tc_number, profile.clinic_id, initialData?.id);
+        if (tcExists) {
+            toast.error("Bu TC Kimlik Numarası ile kayıtlı bir hasta zaten var.");
+            return;
+        }
+    }
+
+    if (data.phone) {
+        const phoneExists = await db.patients.checkPhoneExists(data.phone, profile.clinic_id, initialData?.id);
+        if (phoneExists) {
+            toast.error("Bu telefon numarası ile kayıtlı bir hasta zaten var.");
+            return;
+        }
+    }
+
     mutation.mutate(data);
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-2">
       <FormInput<PatientFormData> label="Ad Soyad *" name="full_name" register={register} error={errors.full_name} />
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormInput<PatientFormData> label="TC Kimlik No" name="tc_number" maxLength={11} register={register} error={errors.tc_number} />
         <FormInput<PatientFormData> label="Telefon *" name="phone" type="tel" register={register} error={errors.phone} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormInput<PatientFormData> label="Doğum Tarihi" name="birth_date" type="date" register={register} error={errors.birth_date} />
         <FormSelect<PatientFormData> label="Cinsiyet" name="gender" register={register} error={errors.gender}>
+            <option value="other">Belirtilmemiş</option>
             <option value="male">Erkek</option>
             <option value="female">Kadın</option>
-            <option value="other">Diğer</option>
         </FormSelect>
       </div>
 
       <FormInput<PatientFormData> label="E-posta" name="email" type="email" register={register} error={errors.email} />
       
       <FormTextarea<PatientFormData> label="Adres" name="address" rows={2} register={register} error={errors.address} />
+      
+      <FormTextarea<PatientFormData> label="Notlar" name="notes" rows={3} register={register} error={errors.notes} />
 
-      <div className="flex justify-end gap-3 mt-6">
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={mutation.isPending}>İptal</Button>
-        <Button type="submit" isLoading={mutation.isPending}>{isEditMode ? 'Güncelle' : 'Kaydet'}</Button>
+      <div className="flex justify-end gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={mutation.isPending}>İptal</Button>
+        <Button type="submit" isLoading={mutation.isPending}>{isEditMode ? 'Bilgileri Güncelle' : 'Hastayı Kaydet'}</Button>
       </div>
     </form>
   );

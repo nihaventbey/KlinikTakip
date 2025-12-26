@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { db } from '../lib/db';
 import { Button } from '../components/ui/Button';
 import { Menu, X } from 'lucide-react'; // İkonlar için
 
@@ -9,6 +11,12 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  const { data: clinic } = useQuery({
+    queryKey: ['clinic', user?.clinic_id],
+    queryFn: () => db.settings.get(user!.clinic_id!),
+    enabled: !!user?.clinic_id,
+  });
 
   // Sayfa değiştiğinde mobil menüyü kapat
   useEffect(() => {
@@ -20,7 +28,12 @@ export default function AdminLayout() {
     navigate('/login');
   };
 
-  const isActive = (path: string) => location.pathname.startsWith(path) && path !== '/admin' ? location.pathname === path : location.pathname === '/admin';
+  const isActive = (path: string) => {
+    if (path === '/admin') {
+      return location.pathname === '/admin';
+    }
+    return location.pathname.startsWith(path);
+  };
   const linkClass = (path: string) => 
     `flex items-center px-4 py-3 rounded-lg transition-colors ${
       isActive(path) 
@@ -30,11 +43,13 @@ export default function AdminLayout() {
 
   const sidebarContent = (
     <>
-      <div className="p-6 border-b flex items-center gap-2">
-        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">K</div>
+      <div className="p-6 border-b flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+          K
+        </div>
         <div>
           <h1 className="text-lg font-bold text-gray-800">Klinik Takip</h1>
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider">Profesyonel Panel</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wider">{clinic?.name || 'Profesyonel Panel'}</p>
         </div>
       </div>
       
@@ -65,6 +80,9 @@ export default function AdminLayout() {
             <span>🥼</span> <span className="ml-3">Personel Yönetimi</span>
           </Link>
         )}
+        <Link to="/admin/settings" className={linkClass('/admin/settings')}>
+            <span>⚙️</span> <span className="ml-3">Ayarlar</span>
+        </Link>
       </nav>
 
       <div className="p-4 border-t bg-gray-50">
@@ -108,7 +126,7 @@ export default function AdminLayout() {
           <button onClick={() => setSidebarOpen(!isSidebarOpen)}>
             <Menu className="h-6 w-6 text-gray-600" />
           </button>
-          <h1 className="text-lg font-bold text-gray-800">Klinik Takip</h1>
+          <h1 className="text-lg font-bold text-gray-800">{clinic?.name || 'Klinik Takip'}</h1>
           <div className="w-6"></div>
         </header>
 

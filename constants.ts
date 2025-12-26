@@ -1,6 +1,6 @@
 import { NavItem, Doctor, Task, Patient } from './src/types';
 
-export const APP_NAME = "DentCare";
+export const APP_VERSION = "1.0.1";
 
 // Navigation
 export const PUBLIC_NAV: NavItem[] = [

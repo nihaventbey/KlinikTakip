@@ -15,6 +15,9 @@ import ArchivedPatientList from './pages/admin/patients/ArchivedPatientList';
 import CalendarPage from './pages/admin/CalendarPage';
 import TreatmentListPage from './pages/admin/treatments/TreatmentListPage';
 import FinancePage from './pages/admin/finance/FinancePage';
+import ClinicSettingsPage from './pages/admin/settings/ClinicSettingsPage';
+import StaffPage from './pages/admin/staff/StaffPage';
+
 
 // Layouts
 import AdminLayout from './layouts/AdminLayout';
@@ -79,8 +82,8 @@ export default function App() {
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="treatments" element={<TreatmentListPage />} />
             <Route path="finance" element={<FinancePage />} />
-            <Route path="staff" element={<ComingSoon title="Personel Yönetimi" />} />
-            <Route path="settings" element={<ComingSoon title="Ayarlar" />} />
+            <Route path="staff" element={<StaffPage />} />
+            <Route path="settings" element={<ClinicSettingsPage />} />
           </Route>
 
           {/* --- SAAS YÖNETİM PANELİ (Süper Admin) --- */}
@@ -97,3 +100,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

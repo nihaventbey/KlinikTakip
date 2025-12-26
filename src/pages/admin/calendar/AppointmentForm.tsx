@@ -28,12 +28,19 @@ interface AppointmentFormProps {
   onClose: () => void;
 }
 
+// Helper to format date to YYYY-MM-DDTHH:mm
+const toLocalISOString = (date: Date) => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+    const localISOString = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, -1);
+    return localISOString.substring(0, 16);
+};
+
+
 export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormProps) {
   const { user: profile } = useAuth();
   const queryClient = useQueryClient();
   const isEditMode = !!eventInfo?.id;
 
-  // --- State for async patient search ---
   const [patientSearch, setPatientSearch] = useState('');
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -45,11 +52,23 @@ export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormP
     enabled: !!profile?.clinic_id,
   });
 
+  const { data: clinicSettings } = useQuery({
+    queryKey: ['clinicSettings', profile?.clinic_id],
+    queryFn: () => db.settings.get(profile!.clinic_id!),
+    enabled: !!profile?.clinic_id,
+  });
+
+  const { data: holidays } = useQuery({
+      queryKey: ['holidays', profile?.clinic_id],
+      queryFn: () => db.holidays.getAllByClinicId(profile!.clinic_id!),
+      enabled: !!profile?.clinic_id,
+  });
+
+
   const { register, handleSubmit, formState: { errors }, reset, control, setValue } = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
   });
 
-  // Effect for searching patients
   useEffect(() => {
     if (debouncedPatientSearch.length > 2) {
       setIsSearching(true);
@@ -67,10 +86,13 @@ export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormP
       reset({
         patient_id: eventInfo.resource?.patient_id || '',
         doctor_id: eventInfo.resource?.doctor_id || '',
-        start_time: eventInfo.start?.toISOString().substring(0, 16) || '',
-        end_time: eventInfo.end?.toISOString().substring(0, 16) || '',
+        start_time: eventInfo.start ? toLocalISOString(eventInfo.start) : '',
+        end_time: eventInfo.end ? toLocalISOString(eventInfo.end) : '',
         notes: eventInfo.notes || '',
       });
+      if (eventInfo.resource?.patient) {
+          setPatientSearch(eventInfo.resource.patient.full_name);
+      }
     }
   }, [eventInfo, reset]);
 
@@ -97,19 +119,47 @@ export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormP
   });
 
   const onSubmit = (data: AppointmentFormData) => {
+    const startTime = new Date(data.start_time);
+    const dayOfWeek = startTime.getDay(); // 0 = Sunday, 1 = Monday, ...
+    const dateStr = startTime.toISOString().split('T')[0];
+
+    // Check for holidays
+    if (holidays?.some(h => h.date === dateStr)) {
+        toast.error("Seçilen tarih bir tatil günüdür. Lütfen başka bir tarih seçin.");
+        return;
+    }
+
+    // Check working hours
+    const workingHours = clinicSettings?.settings?.working_hours;
+    if (workingHours) {
+        const daySetting = workingHours.find((wh: any) => wh.day_of_week === dayOfWeek);
+        if (!daySetting || !daySetting.is_open) {
+            toast.error("Seçilen gün klinik kapalıdır. Lütfen başka bir gün seçin.");
+            return;
+        }
+
+        const start = new Date(`1970-01-01T${daySetting.start_time}`);
+        const end = new Date(`1970-01-01T${daySetting.end_time}`);
+        const appointmentTime = new Date(`1970-01-01T${data.start_time.split('T')[1]}`);
+
+        if (appointmentTime < start || appointmentTime > end) {
+            toast.error(`Seçilen saat çalışma saatleri (${daySetting.start_time} - ${daySetting.end_time}) dışındadır.`);
+            return;
+        }
+    }
+
+
     mutation.mutate(data);
   };
   
-  // --- Patient selection handler ---
   const handlePatientSelect = (patient: Patient) => {
     setValue('patient_id', patient.id, { shouldValidate: true });
-    setPatientSearch(patient.full_name); // Show selected patient's name in input
-    setPatientResults([]); // Close results dropdown
+    setPatientSearch(patient.full_name);
+    setPatientResults([]);
   };
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* --- Patient Async Search Input --- */}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-1">
       <div className="relative">
         <label htmlFor="patient_search" className="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
         <input
@@ -122,7 +172,6 @@ export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormP
         />
         {isSearching && <div className="absolute right-2 top-9 text-xs text-gray-500">Aranıyor...</div>}
         
-        {/* Search Results Dropdown */}
         {patientResults.length > 0 && (
           <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
             {patientResults.map(p => (
@@ -149,19 +198,19 @@ export default function AppointmentForm({ eventInfo, onClose }: AppointmentFormP
         {staff?.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
       </FormSelect>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormInput<AppointmentFormData> label="Başlangıç" name="start_time" type="datetime-local" register={register} error={errors.start_time} />
         <FormInput<AppointmentFormData> label="Bitiş" name="end_time" type="datetime-local" register={register} error={errors.end_time} />
       </div>
 
-      <FormTextarea<AppointmentFormData> label="Konu / Notlar" name="notes" register={register} error={errors.notes} rows={4} />
+      <FormTextarea<AppointmentFormData> label="Konu / Notlar" name="notes" register={register} error={errors.notes} rows={3} />
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={mutation.isPending}>
+        <Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>
           İptal
         </Button>
         <Button type="submit" isLoading={mutation.isPending}>
-          {isEditMode ? 'Güncelle' : 'Kaydet'}
+          {isEditMode ? 'Randevuyu Güncelle' : 'Randevu Oluştur'}
         </Button>
       </div>
     </form>

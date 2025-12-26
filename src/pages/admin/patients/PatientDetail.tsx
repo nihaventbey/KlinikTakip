@@ -14,7 +14,9 @@ import ClinicalNotes from './MedicalHistoryNotes'; // Renamed for clarity
 import MedicalHistory from './MedicalHistory';
 import DentalChart from './DentalChart';
 import PatientImaging from './PatientImaging';
-import { Pencil, Archive, DollarSign, Stethoscope, User, HeartPulse, ClipboardPen, Smile, Image } from 'lucide-react';
+import PatientAppointments from './PatientAppointments';
+import { Pencil, Archive, DollarSign, Stethoscope, User, HeartPulse, ClipboardPen, Smile, Image, Calendar } from 'lucide-react';
+import PatientOverview from './PatientOverview';
 
 const ComingSoon = ({ title }: { title: string }) => (
     <div className="text-center py-10">
@@ -58,29 +60,19 @@ export default function PatientDetail() {
   });
 
   const handleArchivePatient = () => {
-    if (window.confirm(`${patient?.full_name} adlı hastayı arşivlemek istediğinizden emin misiniz? Arşivlenen hastalar listelerde görünmez ancak verileri saklanır.`)) {
+    if (window.confirm('Bu hastayı arşivlemek istediğinizden emin misiniz?')) {
       archiveMutation.mutate();
     }
   };
-  
+
   const renderTabContent = () => {
     if (!patient || !profile) return null;
 
     switch(activeTab) {
       case 'overview':
-        return (
-          <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Hasta Kimlik Bilgileri</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div><strong>TC Kimlik No:</strong> {patient.tc_number || '-'}</div>
-                  <div><strong>Telefon:</strong> {patient.phone}</div>
-                  <div><strong>Email:</strong> {patient.email || '-'}</div>
-                  <div><strong>Cinsiyet:</strong> {patient.gender === 'male' ? 'Erkek' : patient.gender === 'female' ? 'Kadın' : 'Diğer'}</div>
-                  <div><strong>Doğum Tarihi:</strong> {patient.birth_date ? new Date(patient.birth_date).toLocaleDateString('tr-TR') : '-'}</div>
-                  <div><strong>Adres:</strong> {patient.address || '-'}</div>
-              </div>
-          </div>
-        );
+        return <PatientOverview patient={patient} />;
+      case 'appointments':
+        return <PatientAppointments patientId={patientId!} />;
       case 'medical_history':
         return <MedicalHistory patientId={patientId!} />;
       case 'clinical_notes':
@@ -136,6 +128,7 @@ export default function PatientDetail() {
       <div className="mb-6 border-b border-gray-200">
         <nav className="-mb-px flex flex-wrap space-x-2 sm:space-x-4" aria-label="Tabs">
           <button className={tabClass('overview')} onClick={() => setActiveTab('overview')}><User className="h-4 w-4" /><span>Genel Bakış</span></button>
+          <button className={tabClass('appointments')} onClick={() => setActiveTab('appointments')}><Calendar className="h-4 w-4" /><span>Randevular</span></button>
           <button className={tabClass('medical_history')} onClick={() => setActiveTab('medical_history')}><HeartPulse className="h-4 w-4" /><span>Medikal Geçmiş</span></button>
           <button className={tabClass('clinical_notes')} onClick={() => setActiveTab('clinical_notes')}><ClipboardPen className="h-4 w-4" /><span>Klinik Notlar</span></button>
           <button className={tabClass('dental_chart')} onClick={() => setActiveTab('dental_chart')}><Smile className="h-4 w-4" /><span>Diş Şeması</span></button>

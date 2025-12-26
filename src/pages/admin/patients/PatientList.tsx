@@ -62,7 +62,7 @@ export default function PatientList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-gray-800">Aktif Hastalar</h1>
           <Link to="/admin/patients/archived" className="flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors">
@@ -70,7 +70,7 @@ export default function PatientList() {
             Arşivi Görüntüle
           </Link>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={() => setIsModalOpen(true)} className="w-full md:w-auto">
           <Plus size={18} className="mr-2" />
           Yeni Hasta Ekle
         </Button>
@@ -81,19 +81,19 @@ export default function PatientList() {
           placeholder="İsim, TC No veya GSM ile ara..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
+          className="w-full md:max-w-md"
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow border overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white rounded-lg shadow border overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-50 hidden md:table-header-group">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ad Soyad</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefon</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kayıt Tarihi</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bakiye</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">İşlemler</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ad Soyad</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İletişim</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Kayıt Tarihi</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bakiye</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -107,35 +107,41 @@ export default function PatientList() {
               patients?.map((patient) => (
                 <tr 
                   key={patient.id} 
-                  className="hover:bg-gray-50 transition cursor-pointer"
+                  className="hover:bg-gray-50 transition cursor-pointer block md:table-row"
                   onClick={() => handleRowClick(patient.id)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-2 md:py-4 whitespace-nowrap block md:table-cell" data-label="Ad Soyad">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold mr-3 uppercase">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold mr-3 uppercase flex-shrink-0">
                         {patient.full_name.charAt(0)}
                       </div>
                       <div className="text-sm font-medium text-gray-900">{patient.full_name}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{patient.phone}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 block md:table-cell" data-label="İletişim">
+                    <span className="font-bold md:hidden">Telefon: </span>
+                    {patient.phone}
+                  </td>
+                  <td className="px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell" data-label="Kayıt Tarihi">
                     {new Date(patient.created_at).toLocaleDateString('tr-TR')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-2 md:py-4 whitespace-nowrap text-sm font-medium block md:table-cell text-right" data-label="Bakiye">
+                    <span className="font-bold md:hidden">Bakiye: </span>
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.balance > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                       {patient.balance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <button 
-                      onClick={(e) => handleArchiveClick(e, patient)}
-                      className="text-gray-400 hover:text-red-600 p-2 rounded-full transition"
-                      title="Hastayı Arşivle"
-                      disabled={archiveMutation.isPending}
-                    >
-                      <Archive className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-2 md:py-4 whitespace-nowrap text-sm font-medium block md:table-cell text-center" data-label="İşlemler">
+                    <div className="flex items-center justify-end md:justify-center">
+                      <button 
+                        onClick={(e) => handleArchiveClick(e, patient)}
+                        className="text-gray-400 hover:text-red-600 p-2 rounded-full transition"
+                        title="Hastayı Arşivle"
+                        disabled={archiveMutation.isPending}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

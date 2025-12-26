@@ -55,7 +55,7 @@ describe('PatientList', () => {
             expect(screen.getByText('Ahmet Yılmaz')).toBeInTheDocument();
         });
 
-        const searchInput = screen.getByPlaceholderText(/İsim veya TC No ile ara/i);
+        const searchInput = screen.getByPlaceholderText(/İsim, TC No veya GSM ile ara/i);
         fireEvent.change(searchInput, { target: { value: 'Ayşe' } });
 
         await waitFor(() => {
