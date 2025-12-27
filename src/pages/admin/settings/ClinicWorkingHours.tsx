@@ -101,13 +101,13 @@ const ClinicWorkingHours: React.FC = () => {
           if (!day) return null;
 
           return (
-            <div key={day.day_of_week} className="grid grid-cols-4 items-center gap-4 p-3 rounded-md bg-gray-50">
+            <div key={day.day_of_week} className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 p-3 rounded-md bg-gray-50">
               <span className="font-medium text-gray-700 col-span-1">{dayName}</span>
-              <div className="col-span-2 flex items-center gap-2">
+              <div className="col-span-1 md:col-span-2 flex items-center gap-2">
                 <input
                   type="time"
                   disabled={day.is_closed}
-                  value={day.opening_time}
+                  value={day.opening_time || ''}
                   onChange={e => handleTimeChange(day.day_of_week, 'opening_time', e.target.value)}
                   className="w-full px-2 py-1 border rounded-md disabled:bg-gray-200"
                 />
@@ -115,12 +115,12 @@ const ClinicWorkingHours: React.FC = () => {
                 <input
                   type="time"
                   disabled={day.is_closed}
-                  value={day.closing_time}
+                  value={day.closing_time || ''}
                   onChange={e => handleTimeChange(day.day_of_week, 'closing_time', e.target.value)}
                   className="w-full px-2 py-1 border rounded-md disabled:bg-gray-200"
                 />
               </div>
-              <div className="col-span-1 flex items-center justify-end">
+              <div className="col-span-1 flex items-center justify-start md:justify-end">
                 <input
                   type="checkbox"
                   id={`closed-${day.day_of_week}`}

@@ -51,9 +51,9 @@ export default function TreatmentListPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Hizmet ve Tedavi Kataloğu</h1>
-        <Button onClick={() => openModal()}>
+        <Button onClick={() => openModal()} className="w-full md:w-auto">
           <Plus size={18} className="mr-2"/>
           Yeni Tedavi Ekle
         </Button>

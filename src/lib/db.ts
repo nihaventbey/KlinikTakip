@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { 
   Patient, Task, ClinicSettings, Lead, 
-  Transaction, Treatment, InventoryItem, Appointment 
+  Transaction, Treatment, InventoryItem, Appointment, ClinicExpense
 } from '../src/types';
 
 export const db = {
@@ -192,10 +192,17 @@ export const db = {
         const { data, error } = await supabase
             .from('clinical_notes')
             .insert(note)
-            .select() // Simplified select to avoid relationship error on insert
+            .select('*, doctor:doctor_id(full_name)')
             .single();
         if (error) throw error;
         return data;
+    },
+    remove: async (noteId: string) => {
+        const { error } = await supabase
+            .from('clinical_notes')
+            .delete()
+            .eq('id', noteId);
+        if (error) throw error;
     }
   },
 
@@ -325,15 +332,15 @@ export const db = {
         if (error) throw error;
         return data;
     },
-    update: async (id: string, updates: any) => {
+    update: async (id: string, updates: any, clinicId: string) => {
         const { data, error } = await supabase
             .from('profiles')
             .update(updates)
             .eq('id', id)
-            .select()
-            .single();
+            .eq('clinic_id', clinicId)
+            .select();
         if (error) throw error;
-        return data;
+        return data?.[0] || null;
     },
     remove: async (id: string) => {
         const { error } = await supabase
@@ -402,16 +409,20 @@ export const db = {
   },
 
   transactions: {
-    getAll: async (clinicId: string) => {
-      const { data, error } = await supabase
+    getAll: async (clinicId: string, page: number, pageSize: number) => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await supabase
         .from('transactions')
-        .select('*, patient:patients(full_name)')
+        .select('*, patient:patients(full_name)', { count: 'exact' })
         .eq('clinic_id', clinicId)
         .is('deleted_at', null)
-        .order('transaction_date', { ascending: false });
+        .order('transaction_date', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      return data as Transaction[];
+      return { data: data as Transaction[], count: count ?? 0 };
     },
     add: async (trx: any, clinicId: string) => {
         // Here you would ideally use a database function (RPC in Supabase)
@@ -684,6 +695,43 @@ export const db = {
             .delete()
             .eq('id', id);
         if (error) throw error;
+    }
+  },
+
+  clinicExpenses: {
+    getAll: async (clinicId: string, page: number, pageSize: number) => {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error, count } = await supabase
+        .from('clinic_expenses')
+        .select('*', { count: 'exact' })
+        .eq('clinic_id', clinicId)
+        .is('is_deleted', false)
+        .order('expense_date', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+      return { data: data as ClinicExpense[], count: count ?? 0 };
+    },
+    create: async (expense: Omit<ClinicExpense, 'id' | 'created_at' | 'is_deleted' | 'deleted_at'>) => {
+      const { data, error } = await supabase
+        .from('clinic_expenses')
+        .insert(expense)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as ClinicExpense;
+    },
+    remove: async (id: string) => {
+      const { data, error } = await supabase
+        .from('clinic_expenses')
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     }
   }
 };

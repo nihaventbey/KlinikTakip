@@ -1,29 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { ArrowUpCircle, ArrowDownCircle, AlertCircle } from 'lucide-react';
-import { Patient } from '../../../types';
-
-interface FinancialTransaction {
-  id: string;
-  type: 'income' | 'expense' | 'opening_balance';
-  amount: number;
-  description: string;
-  status: 'completed' | 'pending';
-  created_at: string;
-}
+import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Patient, Transaction } from '../../../types';
 
 interface PatientFinancialHistoryProps {
     patient: Patient;
 }
 
-const transactionConfig = {
-    income: { icon: ArrowDownCircle, color: 'text-green-500', label: 'Tahsilat' },
-    expense: { icon: ArrowUpCircle, color: 'text-red-500', label: 'Borç/Gider' },
-    opening_balance: { icon: AlertCircle, color: 'text-gray-500', label: 'Açılış Bakiyesi' }
+const formatCurrency = (value: number, type: 'payment' | 'charge' | 'refund') => {
+    const isCredit = type === 'payment';
+    const color = isCredit ? 'text-green-600' : 'text-red-600';
+    const prefix = isCredit ? '' : '-';
+    return <span className={color}>{prefix}{Math.abs(value).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</span>;
+};
+
+const translateTransactionType = (type: 'income' | 'expense' | string) => {
+    switch (type) {
+        case 'income': return 'Gelir';
+        case 'expense': return 'Gider';
+        default: return type;
+    }
 }
 
 export default function PatientFinancialHistory({ patient }: PatientFinancialHistoryProps) {
-  const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,15 +31,16 @@ export default function PatientFinancialHistory({ patient }: PatientFinancialHis
       if (!patient) return;
       setLoading(true);
       const { data, error } = await supabase
-        .from('financial_transactions')
+        .from('transactions')
         .select('*')
         .eq('patient_id', patient.id)
-        .order('created_at', { ascending: false });
+        .is('deleted_at', null)
+        .order('transaction_date', { ascending: false });
 
       if (error) {
         console.error("Hastanın finansal geçmişi alınırken hata: ", error);
-      } else {
-        setTransactions(data);
+      } else if (data) {
+        setTransactions(data as Transaction[]);
       }
       setLoading(false);
     };
@@ -57,7 +58,7 @@ export default function PatientFinancialHistory({ patient }: PatientFinancialHis
                     {patient.balance.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                 </p>
                 <p className="text-xs text-gray-400">
-                    {patient.balance >= 0 ? 'Hastanın alacağı var.' : 'Hastanın borcu var.'}
+                    {patient.balance > 0 ? 'Hastanın alacağı bulunmamaktadır.' : (patient.balance < 0 ? 'Hastanın borcu var.' : 'Hastanın borcu/alacağı bulunmamaktadır.')}
                 </p>
             </div>
         </div>
@@ -70,32 +71,32 @@ export default function PatientFinancialHistory({ patient }: PatientFinancialHis
             ) : transactions.length === 0 ? (
                 <p className="p-8 text-center text-gray-500">Kayıtlı finansal işlem bulunamadı.</p>
             ) : (
-                <table className="min-w-full">
-                    <tbody className="divide-y divide-gray-200">
+                <div className="divide-y divide-gray-200">
                     {transactions.map(tx => {
-                        const config = transactionConfig[tx.type];
-                        const Icon = config.icon;
+                        const isPayment = tx.amount > 0;
+                        const Icon = isPayment ? ArrowDownCircle : ArrowUpCircle;
+                        const color = isPayment ? 'text-green-500' : 'text-red-500';
                         return (
-                            <tr key={tx.id}>
-                                <td className="p-4 w-12"><Icon className={`w-6 h-6 ${config.color}`} /></td>
-                                <td className="p-4">
-                                    <p className="font-medium">{tx.description}</p>
-                                    <p className="text-sm text-gray-500">{config.label}</p>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <p className={`font-semibold ${config.color}`}>
-                                        {tx.type === 'income' ? '-' : '+'}
+                            <div key={tx.id} className="flex items-center p-4">
+                                <div className="w-12">
+                                    <Icon className={`w-6 h-6 ${color}`} />
+                                </div>
+                                <div className="flex-grow">
+                                    <p className="font-medium">{translateTransactionType(tx.type)}</p>
+                                    <p className="text-sm text-gray-500">{tx.description || 'Açıklama yok'}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`font-semibold ${color}`}>
                                         {tx.amount.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                        {new Date(tx.created_at).toLocaleDateString('tr-TR')}
+                                        {new Date(tx.transaction_date).toLocaleDateString('tr-TR')}
                                     </p>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         )
                     })}
-                    </tbody>
-                </table>
+                </div>
             )}
         </div>
     </div>

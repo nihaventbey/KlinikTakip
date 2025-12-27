@@ -4,7 +4,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { db } from '../../../lib/db';
 import { useAuth } from '../../../contexts/AuthContext';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, Trash2 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
 interface MedicalHistoryNotesProps {
@@ -31,7 +31,6 @@ const AddNoteForm = ({ patientId, clinicId }: MedicalHistoryNotesProps) => {
         onError: (error) => {
             toast.error(`Not eklenirken bir hata oluştu: ${error.message}`);
         },
-        // onSettled will run after either onSuccess or onError
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['clinical_notes', patientId] });
         }
@@ -46,7 +45,7 @@ const AddNoteForm = ({ patientId, clinicId }: MedicalHistoryNotesProps) => {
             note: data.note,
             patient_id: patientId,
             clinic_id: clinicId,
-            doctor_id: user.id, // Logged in user is the doctor adding the note
+            doctor_id: user.id,
         });
     };
 
@@ -72,11 +71,31 @@ const AddNoteForm = ({ patientId, clinicId }: MedicalHistoryNotesProps) => {
 
 // --- Main Component ---
 export default function MedicalHistoryNotes({ patientId, clinicId }: MedicalHistoryNotesProps) {
+  const queryClient = useQueryClient();
   const { data: notes, isLoading } = useQuery({
     queryKey: ['clinical_notes', patientId],
     queryFn: () => db.clinical_notes.getByPatientId(patientId, clinicId),
     enabled: !!patientId && !!clinicId,
   });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) => db.clinical_notes.remove(noteId),
+    onSuccess: () => {
+      toast.success('Not başarıyla silindi.');
+    },
+    onError: (error) => {
+      toast.error(`Not silinirken bir hata oluştu: ${error.message}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['clinical_notes', patientId] });
+    },
+  });
+
+  const handleDeleteNote = (noteId: string) => {
+    if (window.confirm('Bu notu silmek istediğinizden emin misiniz?')) {
+      deleteNoteMutation.mutate(noteId);
+    }
+  };
 
   return (
     <div>
@@ -106,13 +125,23 @@ export default function MedicalHistoryNotes({ patientId, clinicId }: MedicalHist
                             </div>
                             </div>
                             <div className="min-w-0 flex-1">
-                            <div>
-                                <div className="text-sm">
-                                <p className="font-medium text-gray-900">{note.doctor?.full_name || 'Bilinmeyen Doktor'}</p>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <div className="text-sm">
+                                        <p className="font-medium text-gray-900">{note.doctor?.full_name || 'Bilinmeyen Doktor'}</p>
+                                    </div>
+                                    <p className="mt-0.5 text-sm text-gray-500">
+                                        {new Date(note.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </p>
                                 </div>
-                                <p className="mt-0.5 text-sm text-gray-500">
-                                {new Date(note.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </p>
+                                <button
+                                    onClick={() => handleDeleteNote(note.id)}
+                                    className="p-2 text-gray-400 hover:text-red-600 rounded-full"
+                                    disabled={deleteNoteMutation.isPending && deleteNoteMutation.variables === note.id}
+                                    title="Notu Sil"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                             <div className="mt-2 text-sm text-gray-700 bg-white p-3 rounded-md border">
                                 <p style={{ whiteSpace: 'pre-wrap' }}>{note.note}</p>

@@ -6,6 +6,19 @@ import { db } from '../lib/db';
 import { Button } from '../components/ui/Button';
 import { Menu, X } from 'lucide-react'; // İkonlar için
 
+const translateRole = (role: string) => {
+  switch (role.toLowerCase()) {
+    case 'admin': return 'Yönetici';
+    case 'doctor': return 'Doktor';
+    case 'assistant': return 'Asistan';
+    case 'receptionist': return 'Resepsiyonist';
+    case 'accountant': return 'Muhasebeci';
+    case 'super_admin': return 'Süper Yönetici';
+    case 'superadmin': return 'Süper Yönetici';
+    default: return role;
+  }
+};
+
 export default function AdminLayout() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
@@ -75,7 +88,7 @@ export default function AdminLayout() {
           <span>💰</span> <span className="ml-3">Kasa & Ödemeler</span>
         </Link>
         
-        {user?.roles.includes('ADMIN') && (
+        {user?.roles.some(role => role.toLowerCase() === 'admin') && (
           <Link to="/admin/staff" className={linkClass('/admin/staff')}>
             <span>🥼</span> <span className="ml-3">Personel Yönetimi</span>
           </Link>
@@ -92,7 +105,7 @@ export default function AdminLayout() {
           </div>
           <div className="overflow-hidden">
             <p className="text-sm font-medium text-gray-900 truncate">{user?.full_name}</p>
-            <p className="text-xs text-gray-500 truncate">{user?.roles.join(', ')}</p>
+            <p className="text-xs text-gray-500 truncate">{user?.roles.map(translateRole).join(', ')}</p>
           </div>
         </div>
         <Button variant="outline" className="w-full text-xs h-8 border-red-200 text-red-600 hover:bg-red-50" onClick={handleLogout}>

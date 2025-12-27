@@ -18,7 +18,7 @@ export const Logo: React.FC<{ light?: boolean }> = ({ light }) => {
           </div>
       )}
       <span className={`text-xl font-extrabold tracking-tighter whitespace-nowrap leading-none transition-colors ${light ? 'text-white' : 'text-slate-900 group-hover:text-primary'}`}>
-        {settings?.clinic_name || 'DentCare'}
+        {settings?.clinic_name || 'Klinik Takip'}
       </span>
     </div>
   );

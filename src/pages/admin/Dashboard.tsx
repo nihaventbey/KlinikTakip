@@ -113,10 +113,16 @@ export default function Dashboard() {
     enabled: !!profile?.clinic_id,
   });
   
+  const colorMap = {
+    blue: "bg-blue-50 text-blue-700 hover:bg-blue-100",
+    green: "bg-green-50 text-green-700 hover:bg-green-100",
+    yellow: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100",
+  };
+  
   const quickActions = [
-    { name: 'Yeni Randevu', icon: <CalendarPlus size={18} />, action: '/admin/calendar?new-appointment=true', type: 'link', color: 'blue' },
-    { name: 'Hasta Kaydı', icon: <UserPlus size={18} />, action: () => setIsPatientModalOpen(true), type: 'button', color: 'green' },
-    { name: 'Finansal İşlem', icon: <DollarSign size={18} />, action: () => setIsTransactionModalOpen(true), type: 'button', color: 'yellow' },
+    { name: 'Yeni Randevu', icon: <CalendarPlus size={18} />, action: '/admin/calendar?new-appointment=true', type: 'link', color: 'blue' as keyof typeof colorMap },
+    { name: 'Hasta Kaydı', icon: <UserPlus size={18} />, action: () => setIsPatientModalOpen(true), type: 'button', color: 'green' as keyof typeof colorMap },
+    { name: 'Finansal İşlem', icon: <DollarSign size={18} />, action: () => setIsTransactionModalOpen(true), type: 'button', color: 'yellow' as keyof typeof colorMap },
   ];
 
   return (
@@ -142,7 +148,8 @@ export default function Dashboard() {
                 <h2 className="text-lg font-semibold mb-4 text-gray-800">Hızlı İşlemler</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
                     {quickActions.map(qa => {
-                        const className = `flex items-center gap-3 px-4 py-3 bg-${qa.color}-50 text-${qa.color}-700 font-semibold rounded-lg hover:bg-${qa.color}-100 transition-colors text-sm`;
+                        const baseClasses = "flex items-center gap-3 px-4 py-3 font-semibold rounded-lg transition-colors text-sm";
+                        const className = `${baseClasses} ${colorMap[qa.color]}`;
                         if (qa.type === 'link') {
                             return <Link key={qa.name} to={qa.action as string} className={className}>{qa.icon}<span>{qa.name}</span></Link>;
                         }

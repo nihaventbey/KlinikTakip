@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import StaffList from './StaffList';
+import StaffSalary from './StaffSalary';
+import StaffLeave from './StaffLeave';
+import StaffCommission from './StaffCommission';
 
 const tabs = [
   { name: 'Personel Listesi', component: StaffList },
-  // { name: 'Maaş Yönetimi', component: StaffSalary },
-  // { name: 'İzin Yönetimi', component: StaffLeave },
+  { name: 'Hak Ediş Oranları', component: StaffCommission },
+  { name: 'Maaş Yönetimi', component: StaffSalary },
+  { name: 'İzin Yönetimi', component: StaffLeave },
 ];
 
 export default function StaffPage() {
@@ -17,7 +21,7 @@ export default function StaffPage() {
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Personel Yönetimi</h1>
 
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
           {tabs.map(tab => (
             <button
               key={tab.name}

@@ -1,10 +1,11 @@
 import React from 'react';
-import { UseFormRegister, Path, FieldError } from 'react-hook-form';
+import { UseFormRegister, Path, FieldError, RegisterOptions } from 'react-hook-form';
 
 interface FormInputProps<TFormValues extends Record<string, unknown>> extends React.InputHTMLAttributes<HTMLInputElement> {
   name: Path<TFormValues>;
   label?: string;
   register: UseFormRegister<TFormValues>;
+  rules?: RegisterOptions;
   error?: FieldError;
   className?: string;
 }
@@ -13,6 +14,7 @@ export const FormInput = <TFormValues extends Record<string, any>>({
   name,
   label,
   register,
+  rules,
   error,
   className = '',
   ...props
@@ -30,7 +32,7 @@ export const FormInput = <TFormValues extends Record<string, any>>({
           error ? 'border-red-500' : 'border-gray-300'
         } ${className}`}
         {...props}
-        {...register(name)}
+        {...register(name, rules)}
       />
       {error && <p className="mt-1 text-sm text-red-600">{error.message}</p>}
     </div>

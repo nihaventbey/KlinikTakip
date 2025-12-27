@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { db } from '../../../lib/db';
 import { useAuth } from '../../../contexts/AuthContext';
+import { Staff } from '../../../types';
 import { FormInput } from '../../../components/ui/FormInput';
 import { FormSelect } from '../../../components/ui/FormSelect';
 import { Button } from '../../../components/ui/Button';
@@ -20,31 +21,52 @@ const staffSchema = z.object({
 type StaffFormData = z.infer<typeof staffSchema>;
 
 interface AddStaffFormProps {
+    initialData?: Staff | null;
     onSuccess: () => void;
     onCancel: () => void;
 }
 
-export default function AddStaffForm({ onSuccess, onCancel }: AddStaffFormProps) {
+export default function AddStaffForm({ initialData, onSuccess, onCancel }: AddStaffFormProps) {
     const { user: profile } = useAuth();
     const queryClient = useQueryClient();
 
-    const { register, handleSubmit, formState: { errors } } = useForm<StaffFormData>({
+    const { register, handleSubmit, formState: { errors }, reset } = useForm<StaffFormData>({
         resolver: zodResolver(staffSchema),
+        defaultValues: {
+            full_name: initialData?.full_name || '',
+            email: initialData?.email || '',
+            phone: initialData?.phone || '',
+            role: initialData?.roles?.[0] || '',
+        }
     });
+
+    useEffect(() => {
+        reset({
+            full_name: initialData?.full_name || '',
+            email: initialData?.email || '',
+            phone: initialData?.phone || '',
+            role: initialData?.roles?.[0] || '',
+        });
+    }, [initialData, reset]);
 
     const mutation = useMutation({
         mutationFn: (data: StaffFormData) => {
             if (!profile?.clinic_id) throw new Error("Klinik bilgisi bulunamadı.");
+            
             const staffData = {
                 full_name: data.full_name,
                 email: data.email,
                 phone: data.phone,
                 roles: [data.role],
             };
+
+            if (initialData?.id) {
+                return db.staff.update(initialData.id, staffData, profile.clinic_id);
+            }
             return db.staff.add(staffData, profile.clinic_id);
         },
         onSuccess: () => {
-            toast.success('Personel başarıyla eklendi.');
+            toast.success(initialData ? 'Personel başarıyla güncellendi.' : 'Personel başarıyla eklendi.');
             queryClient.invalidateQueries({ queryKey: ['staff', profile?.clinic_id] });
             onSuccess();
         },
@@ -68,6 +90,7 @@ export default function AddStaffForm({ onSuccess, onCancel }: AddStaffFormProps)
                 <option value="assistant">Asistan</option>
                 <option value="receptionist">Resepsiyonist</option>
                 <option value="accountant">Muhasebeci</option>
+                <option value="admin">Yönetici</option>
             </FormSelect>
             <div className="flex justify-end gap-3 pt-4">
                 <Button type="button" variant="secondary" onClick={onCancel} disabled={mutation.isPending}>İptal</Button>

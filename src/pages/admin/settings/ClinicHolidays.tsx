@@ -56,22 +56,25 @@ export default function ClinicHolidays() {
         <div className="max-w-2xl">
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <h2 className="text-xl font-semibold mb-4">Tatil Günleri</h2>
-                <form onSubmit={handleAddHoliday} className="flex items-end gap-4 mb-6">
-                    <Input
-                        label="Tarih"
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        
-                    />
-                    <Input
-                        label="Tatil Adı"
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Örn: Yılbaşı"
-                    />
-                    <Button type="submit" isLoading={addMutation.isPending}>Ekle</Button>
+                <form onSubmit={handleAddHoliday} className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
+                    <div className="w-full">
+                        <Input
+                            label="Tarih"
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="w-full">
+                        <Input
+                            label="Tatil Adı"
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Örn: Yılbaşı"
+                        />
+                    </div>
+                    <Button type="submit" isLoading={addMutation.isPending} className="w-full sm:w-auto">Ekle</Button>
                 </form>
 
                 <div className="space-y-3">

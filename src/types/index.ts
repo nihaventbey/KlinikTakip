@@ -58,16 +58,30 @@ export interface Appointment {
   notes?: string;
 }
 
-// --- FİNANS MODÜLÜ (TAHMİNİ) ---
-export interface Payment {
+// --- FİNANS MODÜLÜ ---
+export interface Transaction {
   id: string;
   clinic_id: string;
   patient_id: string;
+  patient?: { full_name: string }; // İlişkili hasta adı için
   amount: number;
-  payment_method: 'cash' | 'credit_card' | 'insurance';
-  status: 'paid' | 'pending' | 'refunded';
+  type: 'payment' | 'charge' | 'refund'; // Ödeme, Borç, İade
+  transaction_date: string;
   description?: string;
   created_at: string;
+  deleted_at?: string;
+}
+
+export interface ClinicExpense {
+    id: string;
+    clinic_id: string;
+    description: string;
+    amount: number;
+    category?: string;
+    expense_date: string;
+    created_at: string;
+    is_deleted: boolean;
+    deleted_at?: string;
 }
 
 // --- STOK/TEDAVİ MODÜLÜ ---
@@ -75,9 +89,8 @@ export interface Treatment {
   id: string;
   clinic_id: string;
   name: string;
-  code?: string;
+  category: string;
   price: number;
-  duration_minutes: number;
-  category?: string;
   description?: string;
+  deleted_at?: string;
 }
