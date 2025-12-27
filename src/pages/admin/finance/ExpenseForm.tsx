@@ -7,6 +7,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '../../../components/ui/Button';
 import { FormInput } from '../../../components/ui/FormInput';
 import { FormTextarea } from '../../../components/ui/FormTextarea';
+import { FormSelect } from '../../../components/ui/FormSelect';
 import { ClinicExpense } from '../../../types';
 
 type FormValues = {
@@ -15,6 +16,10 @@ type FormValues = {
     category: string;
     expense_date: string;
 };
+
+const expenseCategories = [
+    'Su', 'Elektrik', 'Doğalgaz', 'İnternet', 'Kira', 'Kırtasiye', 'Personel Maaş', 'Diğer'
+];
 
 interface ExpenseFormProps {
     onClose: () => void;
@@ -71,14 +76,17 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({ onClose, initialData }) => {
                 error={errors.description}
             />
 
-            <FormInput
+            <FormSelect
                 label="Kategori"
                 id="category"
                 name="category"
                 register={register}
                 rules={{ required: 'Kategori gereklidir.' }}
                 error={errors.category}
-            />
+            >
+                <option value="">Kategori Seçiniz</option>
+                {expenseCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </FormSelect>
 
             <FormInput
                 label="Tutar (₺)"
