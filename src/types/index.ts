@@ -84,6 +84,20 @@ export interface ClinicExpense {
     deleted_at?: string;
 }
 
+export interface Staff {
+  id: string;
+  clinic_id: string;
+  specialty: string | null;
+  commission_rate: number | null;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  tenant_id: string | null;
+  roles: string[];
+  full_name: string;
+  email: string;
+}
+
 // --- STOK/TEDAVİ MODÜLÜ ---
 export interface Treatment {
   id: string;

@@ -316,10 +316,8 @@ export const db = {
   staff: {
     getAll: async (clinicId: string) => {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('clinic_id', clinicId);
-      
+        .rpc('get_staff_with_details', { p_clinic_id: clinicId });
+
       if (error) throw error;
       return data;
     },
@@ -363,13 +361,11 @@ export const db = {
     },
     getByPatientId: async (patientId: string, clinicId: string) => {
         const { data, error } = await supabase
-            .from('appointments')
-            .select(`*, staff:doctor_id ( full_name )`)
-            .eq('patient_id', patientId)
-            .eq('clinic_id', clinicId)
-            .order('start_time', { ascending: false });
+            .rpc('get_appointments_for_patient', { p_patient_id: patientId, p_clinic_id: clinicId });
+
         if (error) throw error;
-        return data as any;
+        // The RPC returns doctor_full_name, we need to map it to staff.full_name to match the existing component's expectation.
+        return data.map((d: any) => ({ ...d, staff: { full_name: d.doctor_full_name } }));
     },
     add: async (apt: any, clinicId: string) => {
       const { data, error } = await supabase
