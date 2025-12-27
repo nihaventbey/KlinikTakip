@@ -3,43 +3,49 @@ import StaffList from './StaffList';
 import StaffSalary from './StaffSalary';
 import StaffLeave from './StaffLeave';
 import StaffCommission from './StaffCommission';
-
-const tabs = [
-  { name: 'Personel Listesi', component: StaffList },
-  { name: 'Hak Ediş Oranları', component: StaffCommission },
-  { name: 'Maaş Yönetimi', component: StaffSalary },
-  { name: 'İzin Yönetimi', component: StaffLeave },
-];
+import { Users, CreditCard, CalendarDays, Percent } from 'lucide-react';
 
 export default function StaffPage() {
-  const [activeTab, setActiveTab] = useState(tabs[0].name);
+  const [activeTab, setActiveTab] = useState('list');
 
-  const ActiveComponent = tabs.find(tab => tab.name === activeTab)?.component;
+  const tabs = [
+    { id: 'list', label: 'Personel Listesi', icon: Users },
+    { id: 'salaries', label: 'Maaş ve Ödemeler', icon: CreditCard },
+    { id: 'leaves', label: 'İzin Yönetimi', icon: CalendarDays },
+    { id: 'commissions', label: 'Primler', icon: Percent },
+  ];
 
   return (
-    <div className="p-4 md:p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Personel Yönetimi</h1>
-
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.name}
-              onClick={() => setActiveTab(tab.name)}
-              className={`${
-                activeTab === tab.name
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-            >
-              {tab.name}
-            </button>
-          ))}
-        </nav>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Personel Yönetimi</h1>
       </div>
 
-      <div className="py-6">
-        {ActiveComponent ? <ActiveComponent /> : <p>Bileşen yüklenemedi.</p>}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Responsive Sekme Yapısı: Mobilde alt alta, Tablet/Masaüstü yan yana */}
+        <div className="flex flex-col sm:flex-row border-b border-gray-100 bg-gray-50/50">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all border-b-2 sm:border-b-0 sm:border-r last:border-r-0 ${
+                activeTab === tab.id
+                  ? 'bg-white text-indigo-600 border-indigo-600 sm:border-b-2 sm:border-b-indigo-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border-transparent'
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-4 sm:p-6">
+          {activeTab === 'list' && <StaffList />}
+          {activeTab === 'salaries' && <StaffSalary />}
+          {activeTab === 'leaves' && <StaffLeave />}
+          {activeTab === 'commissions' && <StaffCommission />}
+        </div>
       </div>
     </div>
   );

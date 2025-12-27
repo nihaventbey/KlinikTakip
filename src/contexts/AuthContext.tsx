@@ -19,30 +19,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Effect 1: Handle session changes from Supabase
   useEffect(() => {
-    // On initial load, get the session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      // Set loading to false only after the initial session is fetched.
-      // The profile fetching will be handled by the next effect.
-      setLoading(false);
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      if (!initialSession) setLoading(false);
     });
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Effect 2: React to session changes to fetch profile
   useEffect(() => {
     const fetchProfile = async () => {
-      if (session) {
+      if (session?.user) {
         try {
           const { data, error } = await supabase
             .from('profiles')
@@ -51,14 +43,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (error) {
-            console.error('Error loading profile:', error);
-            setUser(null);
-          } else if (data) {
+            console.error('Profile fetch error:', error);
+          }
+
+          if (data) {
+            // İsim kontrolü: Önce veri tabanı, yoksa metadata, o da yoksa email
+            const fullName = data.full_name || 
+                             session.user.user_metadata?.full_name || 
+                             session.user.email?.split('@')[0] || 
+                             'İsimsiz Kullanıcı';
+            
             const newProfile: Profile = {
               id: data.id,
               clinic_id: data.clinic_id,
               tenant_id: data.tenant_id,
-              full_name: data.full_name,
+              full_name: fullName,
               email: session.user.email!,
               roles: (data.roles || []) as UserRole[],
               created_at: data.created_at,
@@ -67,36 +66,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(newProfile);
           }
         } catch (e) {
-          console.error('A critical error occurred while fetching profile:', e);
+          console.error('Critical auth error:', e);
           setUser(null);
+        } finally {
+          setLoading(false);
         }
       } else {
-        // If there is no session, ensure user is null
         setUser(null);
+        setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [session]); // This effect runs whenever the session state changes
+  }, [session]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
-  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN') || false;
-  const isAdmin = user?.roles.includes('ADMIN') || false;
+  const isSuperAdmin = user?.roles.includes('SUPER_ADMIN' as UserRole) || 
+                      user?.roles.includes('super_admin' as UserRole) || false;
+                      
+  const isAdmin = user?.roles.includes('ADMIN' as UserRole) || 
+                  user?.roles.includes('admin' as UserRole) || false;
 
-  const value = {
-    session,
-    user,
-    loading,
-    isAdmin,
-    isSuperAdmin,
-    signOut,
-  };
-  
-  // Render children only when loading is false. This prevents rendering protected
-  // routes with an incomplete auth state during the initial load.
+  const value = { session, user, loading, isAdmin, isSuperAdmin, signOut };
+
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
@@ -106,8 +101,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
